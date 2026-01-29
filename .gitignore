@@ -1,0 +1,27 @@
+node_modules
+
+.vscode/
+
+lib/
+dist/
+coverage/
+
+# 0x profile flame graph
+*.0x/
+
+# node profiler logs
+benchmark/*.log
+benchmark/*.txt
+
+# vscode profiler logs
+*.heapprofile
+*.cpuprofile
+
+# dev
+tests/dev.test.ts
+tests/path/dev.test.ts
+dev.js
+dev.mjs
+
+# system
+.DS_Store
