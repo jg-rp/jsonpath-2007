@@ -35,6 +35,8 @@ export const Tokens = Object.freeze({
   SINGLE_QUOTED_STRING: "SINGLE_QUOTED_STRING",
   SINGLE_QUOTED_ESC_STRING: "SINGLE_QUOTED_ESC_STRING",
   TRUE: "TRUE",
+  TRIVIA: "TRIVIA",
+  WORD: "WORD",
 });
 
 /**

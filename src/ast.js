@@ -12,11 +12,34 @@ function isPlainObject(value) {
 }
 
 /**
- * @typedef {ChildSegment|DescendantSegment} Segment
- * @typedef {NameSelector|IndexSelector|SliceSelector|WildcardSelector|FilterSelector} Selector
+ * Base class for all JSONPath selectors.
+ *
+ * @abstract
  */
+export class Selector {
+  /** @type {Token} */
+  token;
 
-export class ChildSegment {
+  /**
+   * @param {Token} token
+   */
+  constructor(token) {
+    this.token = token;
+  }
+
+  /**
+   * @param {JSONPathNode} node
+   * @returns {Array<JSONPathNode>}
+   */
+  resolve(node) {}
+}
+
+/**
+ * Base class for all JSONPath segments.
+ *
+ * @abstract
+ */
+export class Segment {
   /** @type {Token} */
   token;
 
@@ -24,7 +47,6 @@ export class ChildSegment {
   selectors;
 
   /**
-   *
    * @param {Token} token
    * @param {Array<Selector>} selectors
    */
@@ -34,7 +56,34 @@ export class ChildSegment {
   }
 
   /**
-   *
+   * @abstract
+   * @param {Array<JSONPathNode>} _nodes
+   * @returns {Array<JSONPathNode>}
+   */
+  resolve(_nodes) {
+    throw new Error("abstract method");
+  }
+
+  /**
+   * @abstract
+   * @returns {string}
+   */
+  toString() {
+    throw new Error("abstract method");
+  }
+}
+
+/**
+ * JSONPath child segment.
+ *
+ * The child segment selects zero or more nodes from immediate children using
+ * one or more selectors...
+ *
+ * @extends Segment
+ */
+export class ChildSegment extends Segment {
+  /**
+   * @override
    * @param {Array<JSONPathNode>} nodes
    * @returns {Array<JSONPathNode>}
    */
@@ -50,6 +99,10 @@ export class ChildSegment {
     return result;
   }
 
+  /**
+   * @override
+   * @returns {string}
+   */
   toString() {
     // TODO:
   }
@@ -134,6 +187,7 @@ export class NameSelector {
     this.token = token;
     this.name = name;
   }
+
   /**
    * @param {JSONPathNode} node
    * @returns {Array<JSONPathNode>}
@@ -204,11 +258,27 @@ export class SliceSelector {
   /** @type {Token} */
   token;
 
+  /** @type {number|undefined} */
+  start;
+
+  /** @type {number|undefined} */
+  stop;
+
+  /** @type {number|undefined} */
+  step;
+
   /**
    * @param {Token} token
+   * @param {number|undefined} start
+   * @param {number|undefined} stop
+   * @param {number|undefined} step
    */
-  constructor(token) {
+  constructor(token, start = undefined, stop = undefined, step = undefined) {
     this.token = token;
+    this.start = start;
+    this.stop = stop;
+    this.step = step;
+    // TODO: check range in parser
   }
   /**
    * @param {JSONPathNode} node
@@ -252,11 +322,16 @@ export class FilterSelector {
   /** @type {Token} */
   token;
 
+  /** @type {Expression} */
+  expression;
+
   /**
    * @param {Token} token
+   * @param {Expression} expression
    */
-  constructor(token) {
+  constructor(token, expression) {
     this.token = token;
+    this.expression = expression;
   }
   /**
    * @param {JSONPathNode} node
@@ -269,5 +344,61 @@ export class FilterSelector {
 
   toString() {
     // TODO:
+  }
+}
+
+/**
+ * Base class for all filter expressions.
+ * @abstract
+ */
+export class Expression {
+  /** @type {Token} */
+  token;
+
+  /**
+   * @param {Token} token
+   */
+  constructor(token) {
+    this.token = token;
+    if (new.target === Expression) {
+      throw new Error("Expression is abstract and cannot be instantiated");
+    }
+  }
+
+  /**
+   * @abstract
+   * @param {FilterContext} context
+   * @returns {unknown}
+   */
+  evaluate(context) {
+    throw new Error("abstract method");
+  }
+
+  /**
+   * @abstract
+   */
+  toString() {
+    throw new Error("abstract method");
+  }
+}
+
+/**
+ * @abstract
+ * @extends Expression
+ */
+export class ExpressionLiteral extends Expression {}
+
+/**
+ * @extends ExpressionLiteral
+ */
+export class NullLiteral extends ExpressionLiteral {
+  /** @override */
+  evaluate(context) {
+    return null;
+  }
+
+  /** @override */
+  toString() {
+    return "null";
   }
 }

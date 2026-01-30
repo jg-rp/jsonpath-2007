@@ -1,547 +1,289 @@
 import { Token, Tokens } from "./token";
 
 const reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
-const reFunctionCall = /[a-z][a-z_0-9]*(?=\()/y;
-const reIndex = /-?\d+/y;
 const reInt = /-?\d+(?:[eE]\+?\d+)?/y;
 const reName = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
-const reTrivia = /[[ \n\r\t]]+/y;
+const reTrivia = /[ \n\r\t]+/y;
 
-export class Lexer {
-  /**
-   * @callback LexerState
-   * @returns {LexerState|null}
-   */
-
-  /** @type {string} */
-  input;
-
+/**
+ *
+ * @param {string} input
+ * @returns {Array<Token>}
+ */
+export function tokenize(input) {
   /** @type {Array<Token>} */
-  tokens;
+  const tokens = [];
 
-  /** @type {number} */
-  #start;
+  const length = input.length;
+  let pos = 0;
 
-  /** @type {number} */
-  #pos;
+  /** @type {number|undefined} */
+  let ch = undefined;
 
-  /** @type {number} */
-  #filterDepth;
+  /** @type {string|null} */
+  let match = null;
 
-  /** @type {Array<number>} */
-  #callStack;
+  while (pos < length) {
+    ch = input.charCodeAt(pos);
 
-  /** @type {Array<string>} */
-  #bracketStack;
-
-  /**
-   *
-   * @param {string} input
-   */
-  constructor(input) {
-    this.input = input;
-    this.tokens = [];
-    this.#start = 0;
-    this.#pos = 0;
-    this.#filterDepth = 0;
-    this.#callStack = [];
-    this.#bracketStack = [];
-  }
-
-  /**
-   *
-   * @param {string} input
-   * @returns {Array<Token>}
-   */
-  static tokenize(input) {
-    const lexer = new Lexer(input);
-    lexer.run();
-    return lexer.tokens;
-  }
-
-  /**
-   * Populate this.tokens with tokens.
-   * @returns {void}
-   */
-  run() {
-    /** @type {LexerState|null} */
-    let state = this.#lexRoot;
-    while (state) {
-      state = state();
-    }
-  }
-
-  /** @type {LexerState} */
-  #lexRoot() {
-    const ch = this.#peek();
-    if (ch === "$") {
-      this.#pos += 1;
-      this.#emit(Tokens.DOLLAR);
-      return this.#lexSegment;
-    }
-
-    this.#error(`expected '$', found '${ch}'`);
-    return null;
-  }
-
-  /** @type {LexerState} */
-  #lexSegment() {
-    if (this.#skip(reTrivia) && !this.#peek()) {
-      this.#error("unexpected trailing whitespace");
-      return null;
-    }
-
-    const ch = this.#next();
+    // TODO: try regex and map instead of switch?
 
     switch (ch) {
-      case undefined:
-        this.#emit(Tokens.EOI);
-        return null;
-      case ".":
-        if (this.#peek() === ".") {
-          this.#next();
-          this.#emit(Tokens.DOUBLE_DOT);
-          return this.#lexDescendantSegment;
+      case 42: // *
+        tokens.push(new Token(Tokens.ASTERISK, undefined, pos));
+        pos += 1;
+        break;
+      case 64: // @
+        tokens.push(new Token(Tokens.AT, undefined, pos));
+        pos += 1;
+        break;
+      case 58: // :
+        tokens.push(new Token(Tokens.COLON, undefined, pos));
+        pos += 1;
+        break;
+      case 44: // ,
+        tokens.push(new Token(Tokens.COMMA, undefined, pos));
+        pos += 1;
+        break;
+      case 36: // $
+        tokens.push(new Token(Tokens.DOLLAR, undefined, pos));
+        pos += 1;
+        break;
+      case 40: // (
+        tokens.push(new Token(Tokens.LEFT_PAREN, undefined, pos));
+        pos += 1;
+        break;
+      case 91: // [
+        tokens.push(new Token(Tokens.LEFT_BRACKET, undefined, pos));
+        pos += 1;
+        break;
+      case 41: // )
+        tokens.push(new Token(Tokens.RIGHT_PAREN, undefined, pos));
+        pos += 1;
+        break;
+      case 93: // ]
+        tokens.push(new Token(Tokens.RIGHT_BRACKET, undefined, pos));
+        pos += 1;
+        break;
+      case 33: // !
+        tokens.push(new Token(Tokens.NE, undefined, pos));
+        pos += 1;
+        break;
+      case 63: // ?
+        tokens.push(new Token(Tokens.QUESTION, undefined, pos));
+        pos += 1;
+        break;
+      case 38: // &
+        if (input.charCodeAt(pos + 1) == 38) {
+          tokens.push(new Token(Tokens.AND, undefined, pos));
+          pos += 2;
+        } else {
+          tokens.push(
+            new Token(
+              Tokens.ERROR,
+              "unknown token '&', did you mean '&&'?",
+              pos,
+            ),
+          );
+          pos += 1;
+        }
+        break;
+      case 124: // |
+        if (input.charCodeAt(pos + 1) == 124) {
+          tokens.push(new Token(Tokens.OR, undefined, pos));
+          pos += 2;
+        } else {
+          tokens.push(
+            new Token(
+              Tokens.ERROR,
+              "unknown token '|', did you mean '||'?",
+              pos,
+            ),
+          );
+          pos += 1;
+        }
+        break;
+      case 46: // .
+        if (input.charCodeAt(pos + 1) == 46) {
+          tokens.push(new Token(Tokens.DOUBLE_DOT, undefined, pos));
+          pos += 2;
+        } else {
+          tokens.push(new Token(Tokens.DOT, undefined, pos));
+          pos += 1;
+        }
+        break;
+      case 61: // =
+        if (input.charCodeAt(pos + 1) == 61) {
+          tokens.push(new Token(Tokens.EQ, undefined, pos));
+          pos += 2;
+        } else {
+          tokens.push(
+            new Token(
+              Tokens.ERROR,
+              "unknown token '=', did you mean '=='?",
+              pos,
+            ),
+          );
+          pos += 1;
+        }
+        break;
+      case 62: // >
+        if (input.charCodeAt(pos + 1) == 61) {
+          tokens.push(new Token(Tokens.GE, undefined, pos));
+          pos += 2;
+        } else {
+          tokens.push(new Token(Tokens.GT, undefined, pos));
+          pos += 1;
+        }
+        break;
+      case 60: // <
+        if (input.charCodeAt(pos + 1) == 61) {
+          tokens.push(new Token(Tokens.LE, undefined, pos));
+          pos += 2;
+        } else {
+          tokens.push(new Token(Tokens.LT, undefined, pos));
+          pos += 1;
+        }
+        break;
+      case 39: // '
+        let [token, new_pos] = scan_single_quoted_string(input, pos + 1);
+        tokens.push(token);
+        pos = new_pos;
+        break;
+      case 34: // ""
+        [token, new_pos] = scan_double_quoted_string(input, pos + 1);
+        tokens.push(token);
+        pos = new_pos;
+        break;
+      default:
+        match = scan(reName, input, pos);
+        if (match) {
+          tokens.push(new Token(Tokens.NAME, match, pos));
+          pos += match.length;
+          continue;
         }
 
-        this.#emit(Tokens.DOT);
-        return this.#lexDotSelector;
-      case "[":
-        this.#enterBracketedSegment();
-        this.#emit(Tokens.LEFT_BRACKET);
-        return this.#lexInsideBracketedSegment;
-      default:
-        this.#backup();
-        if (this.#filterDepth) return this.#lexInsideFilter;
-        this.#error(
-          `expected '.', '..' or a bracketed selection, found '${ch}'`,
+        match = scan(reTrivia, input, pos);
+        if (match) {
+          tokens.push(new Token(Tokens.TRIVIA, match, pos));
+          pos += match.length;
+          continue;
+        }
+
+        match = scan(reFloat, input, pos);
+        if (match) {
+          tokens.push(new Token(Tokens.FLOAT, match, pos));
+          pos += match.length;
+          continue;
+        }
+
+        match = scan(reInt, input, pos);
+        if (match) {
+          tokens.push(new Token(Tokens.INTEGER, match, pos));
+          pos += match.length;
+          continue;
+        }
+
+        tokens.push(
+          new Token(
+            Tokens.ERROR,
+            `unknown token '${String.fromCharCode(ch)}'`,
+            pos,
+          ),
         );
-        return null;
+        pos += 1;
     }
   }
 
-  /** @type {LexerState} */
-  #lexDescendantSegment() {
-    const match = this.#scan(reName);
-    if (match) {
-      // Shorthand name
-      this.#emit(Tokens.NAME, match);
-      return this.#lexSegment;
-    }
+  return tokens;
+}
 
-    const ch = this.#next();
+/**
+ * @param {RegExp} pattern
+ * @param {string} input
+ * @param {number} pos
+ * @returns {string|null}
+ */
+function scan(pattern, input, pos) {
+  pattern.lastIndex = pos;
+  const match = pattern.exec(input);
+  pattern.lastIndex = 0;
+  return match ? match[0] : null;
+}
+
+/**
+ *
+ * @param {string} input
+ * @param {number} pos
+ * @return {[Token, number]}
+ */
+function scan_single_quoted_string(input, pos) {
+  const start = pos;
+  const length = input.length;
+
+  /** @type {number|undefined} */
+  let ch = undefined;
+
+  /** @type {import("./token").TokenKind} */
+  let kind = Tokens.SINGLE_QUOTED_STRING;
+
+  while (pos < length) {
+    ch = input.charCodeAt(pos);
+
     switch (ch) {
-      case undefined:
-        this.#error("unexpected bald descendant segment");
-        return null;
-      case "*":
-        this.#emit(Tokens.ASTERISK);
-        return this.#lexSegment;
-      case "[":
-        this.#enterBracketedSegment();
-        this.#emit(Tokens.LEFT_BRACKET);
-        return this.#lexInsideBracketedSegment;
+      case 92: // \
+        pos += 2;
+        kind = Tokens.SINGLE_QUOTED_ESC_STRING;
+        break;
+      case NaN:
+        return [
+          new Token(Tokens.ERROR, "unclosed string literal", start),
+          length,
+        ];
+      case 39: // '
+        return [new Token(kind, input.slice(start, pos), start), pos + 1];
       default:
-        this.#backup();
-        this.#error(`unexpected descendent selection token '${ch}'`);
-        return null;
+        pos += 1;
     }
   }
 
-  /** @type {LexerState} */
-  #lexDotSelector() {
-    if (this.#skip(reTrivia)) {
-      this.#error("unexpected whitespace between dot and shorthand selector");
-      return null;
-    }
+  return [new Token(Tokens.ERROR, "unclosed string literal", start), length];
+}
+/**
+ *
+ * @param {string} input
+ * @param {number} pos
+ * @return {[Token, number]}
+ */
+function scan_double_quoted_string(input, pos) {
+  const start = pos;
+  const length = input.length;
 
-    const match = this.#scan(reName);
-    if (match) {
-      // Shorthand name
-      this.#emit(Tokens.NAME, match);
-      return this.#lexSegment;
-    }
+  /** @type {number|undefined} */
+  let ch = undefined;
 
-    const ch = this.#next();
-    if (ch === "*") {
-      this.#emit(Tokens.ASTERISK);
-      return this.#lexSegment;
-    }
+  /** @type {import("./token").TokenKind} */
+  let kind = Tokens.DOUBLE_QUOTED_STRING;
 
-    this.#backup();
-    this.#error("expected a shorthand name or wild card selector");
-    return null;
-  }
+  while (pos < length) {
+    ch = input.charCodeAt(pos);
 
-  /** @type {LexerState} */
-  #lexInsideBracketedSegment() {
-    for (;;) {
-      this.#skip(reTrivia);
-
-      const match = this.#scan(reIndex);
-      if (match) {
-        this.#emit(Tokens.INDEX, match);
-        continue;
-      }
-
-      const ch = this.#next();
-      switch (ch) {
-        case undefined:
-          this.#error("unclosed bracketed segment");
-          return null;
-        case "]":
-          if (this.#bracketStack.pop() !== "[") {
-            this.#backup();
-            this.#error("unbalanced brackets");
-            return null;
-          }
-
-          this.#emit(Tokens.RIGHT_BRACKET);
-          return this.#lexSegment;
-        case "*":
-          this.#emit(Tokens.ASTERISK);
-          break;
-        case "?":
-          this.#emit(Tokens.QUESTION);
-          this.#enterFilterSelector();
-          return this.#lexInsideFilter;
-        case ",":
-          this.#emit(Tokens.COMMA);
-          break;
-        case ":":
-          this.#emit(Tokens.COLON);
-          break;
-        case "'":
-          this.#acceptSingleQuotedString();
-          break;
-        case '"':
-          this.#acceptDoubleQuotedString();
-          break;
-        default:
-          this.#backup();
-          this.#error(`unexpected token '${ch}' in bracketed segment`);
-          return null;
-      }
+    switch (ch) {
+      case 92: // \
+        pos += 2;
+        kind = Tokens.DOUBLE_QUOTED_ESC_STRING;
+        break;
+      case NaN:
+        return [
+          new Token(Tokens.ERROR, "unclosed string literal", start),
+          length,
+        ];
+      case 34: // "
+        return [new Token(kind, input.slice(start, pos), start), pos + 1];
+      default:
+        pos += 1;
     }
   }
 
-  /** @type {LexerState} */
-  #lexInsideFilter() {
-    let match;
-
-    for (;;) {
-      this.#skip(reTrivia);
-      const ch = this.#next();
-      switch (ch) {
-        case undefined:
-          this.#error("unclosed bracketed segment");
-          return null;
-        case "]":
-          this.#leaveFilter();
-          this.#backup();
-          return this.#lexInsideBracketedSegment;
-        case ",":
-          this.#emit(Tokens.COMMA);
-          // Inside a function call?
-          if (this.#callStack.length > 0) continue;
-          this.#leaveFilter();
-          return this.#lexInsideBracketedSegment;
-        case "(":
-          this.#bracketStack.push("(");
-          this.#emit(Tokens.LEFT_PAREN);
-          if (this.#callStack.length > 0) {
-            // @ts-ignore
-            this.#callStack[this.#callStack.length - 1] += 1;
-          }
-          break;
-        case ")":
-          if (this.#bracketStack.pop() !== "(") {
-            this.#backup();
-            this.#error("unbalanced brackets");
-            return null;
-          }
-
-          this.#emit(Tokens.RIGHT_PAREN);
-
-          // Are we closing a function call or a parenthesized expression?
-          if (this.#callStack.length > 0) {
-            // @ts-ignore
-            this.#callStack[this.#callStack.length - 1] -= 1;
-            if (this.#callStack[this.#callStack.length - 1] === 0) {
-              this.#callStack.pop();
-            }
-          }
-          break;
-        case "$":
-          this.#emit(Tokens.DOLLAR);
-          return this.#lexSegment;
-        case "@":
-          this.#emit(Tokens.AT);
-          return this.#lexSegment;
-        case ".":
-          // TODO: is this needed?
-          this.#backup();
-          return this.#lexSegment;
-        case "!":
-          if (this.#peek() === "=") {
-            this.#next();
-            this.#emit(Tokens.NE);
-          } else {
-            this.#emit(Tokens.NOT);
-          }
-          break;
-        case "=":
-          if (this.#peek() === "=") {
-            this.#next();
-            this.#emit(Tokens.EQ);
-          } else {
-            this.#backup();
-            this.#error("unexpected operator, did you mean '=='?");
-            return null;
-          }
-          break;
-        case "<":
-          if (this.#peek() === "=") {
-            this.#next();
-            this.#emit(Tokens.LE);
-          } else {
-            this.#emit(Tokens.LT);
-          }
-          break;
-        case ">":
-          if (this.#peek() === "=") {
-            this.#next();
-            this.#emit(Tokens.GE);
-          } else {
-            this.#emit(Tokens.GT);
-          }
-          break;
-        case "&":
-          if (this.#peek() === "&") {
-            this.#next();
-            this.#emit(Tokens.AND);
-          } else {
-            this.#backup();
-            this.#error("unexpected operator, did you mean '&&'?");
-            return null;
-          }
-          break;
-        case "|":
-          if (this.#peek() === "||") {
-            this.#next();
-            this.#emit(Tokens.OR);
-          } else {
-            this.#backup();
-            this.#error("unexpected operator, did you mean '||'?");
-            return null;
-          }
-          break;
-        case "'":
-          if (!this.#acceptSingleQuotedString()) {
-            return null;
-          }
-          break;
-        case '"':
-          if (!this.#acceptDoubleQuotedString()) {
-            return null;
-          }
-          break;
-        default:
-          this.#backup();
-
-          if (this.#scan(/true/y)) {
-            this.#emit(Tokens.TRUE);
-            continue;
-          }
-
-          if (this.#scan(/false/y)) {
-            this.#emit(Tokens.FALSE);
-            continue;
-          }
-
-          if (this.#scan(/null/y)) {
-            this.#emit(Tokens.FALSE);
-            continue;
-          }
-
-          match = this.#scan(reInt);
-          if (match) {
-            this.#emit(Tokens.INTEGER);
-            continue;
-          }
-
-          match = this.#scan(reFloat);
-          if (match) {
-            this.#emit(Tokens.FLOAT);
-            continue;
-          }
-
-          match = this.#scan(reFunctionCall);
-          if (match) {
-            this.#callStack.push(1);
-            this.#emit(Tokens.FUNCTION);
-            this.#bracketStack.push("(");
-            this.#next(); // '('
-            this.#emit(Tokens.LEFT_PAREN);
-            continue;
-          }
-
-          this.#error(`unexpected filter selector token '${ch}'`);
-          return null;
-      }
-    }
-  }
-
-  /**
-   * @returns {boolean}
-   */
-  #acceptSingleQuotedString() {
-    this.#ignore(); // '
-
-    /** @type {import("./token").TokenKind} */
-    let kind = Tokens.SINGLE_QUOTED_STRING;
-
-    for (;;) {
-      switch (this.#next()) {
-        case "\\":
-          this.#next();
-          kind = Tokens.SINGLE_QUOTED_ESC_STRING;
-          break;
-        case undefined:
-          this.#backup();
-          this.#error("unclosed string literal");
-          return false;
-        case "'":
-          this.#backup();
-          this.#emit(kind, this.input.slice(this.#start, this.#pos));
-          this.#next();
-          this.#ignore();
-          return true;
-      }
-    }
-  }
-
-  /**
-   * @returns {boolean}
-   */
-  #acceptDoubleQuotedString() {
-    this.#ignore(); // ""
-
-    /** @type {import("./token").TokenKind} */
-    let kind = Tokens.DOUBLE_QUOTED_STRING;
-
-    for (;;) {
-      switch (this.#next()) {
-        case "\\":
-          this.#next();
-          kind = Tokens.DOUBLE_QUOTED_ESC_STRING;
-          break;
-        case undefined:
-          this.#backup();
-          this.#error("unclosed string literal");
-          return false;
-        case '"':
-          this.#backup();
-          this.#emit(kind, this.input.slice(this.#start, this.#pos));
-          this.#next();
-          this.#ignore();
-          return true;
-      }
-    }
-  }
-
-  /**
-   * Emit a new token.
-   * @param {import("./token").TokenKind} kind
-   * @param {string|undefined} value
-   * @returns {void}
-   */
-  #emit(kind, value = undefined) {
-    this.tokens.push(new Token(kind, value, this.#start));
-    this.#start = this.#pos;
-  }
-
-  /**
-   * Return the next character and advance the character pointer.
-   * @returns {string|undefined}
-   */
-  #next() {
-    const s = this.input[this.#pos];
-    if (this.#pos < this.input.length) {
-      this.#pos += 1;
-    }
-    return s;
-  }
-
-  /**
-   * Return the next character without advancing the character pointer.
-   * @returns {string|undefined}
-   */
-  #peek() {
-    return this.input[this.#pos];
-  }
-
-  /**
-   * @returns {void}
-   */
-  #ignore() {
-    this.#start = this.#pos;
-  }
-
-  /**
-   * @returns {void}
-   */
-  #backup() {
-    if (this.#pos > this.#start) {
-      this.#pos -= 1;
-    }
-  }
-
-  /**
-   *
-   * @param {RegExp} pattern
-   * @returns {string|undefined}
-   */
-  #scan(pattern) {
-    pattern.lastIndex = this.#pos;
-    const match = pattern.exec(this.input);
-    pattern.lastIndex = 0;
-
-    if (match) {
-      this.#pos += match[0].length;
-      return match[0];
-    }
-
-    return undefined;
-  }
-
-  /**
-   *
-   * @param {RegExp} pattern
-   * @returns {boolean}
-   */
-  #skip(pattern) {
-    return !!this.#scan(pattern);
-  }
-
-  /**
-   * Emit an error token.
-   * @param {string} message
-   * @return {void}
-   */
-  #error(message) {
-    this.tokens.push(new Token(Tokens.ERROR, message, this.#pos));
-  }
-
-  #enterBracketedSegment() {
-    this.#bracketStack.push("[");
-  }
-
-  #enterFilterSelector() {
-    this.#filterDepth += 1;
-  }
-
-  #leaveFilter() {
-    this.#filterDepth -= 1;
-  }
+  return [new Token(Tokens.ERROR, "unclosed string literal", start), length];
 }
