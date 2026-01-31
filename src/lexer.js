@@ -1,4 +1,4 @@
-import { Token, Tokens } from "./token";
+import { Token, T } from "./token";
 
 const reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
 const reInt = /-?\d+(?:[eE]\+?\d+)?/y;
@@ -17,136 +17,128 @@ export function tokenize(input) {
   const length = input.length;
   let pos = 0;
 
-  /** @type {number|undefined} */
-  let ch = undefined;
+  /** @type {number} */
+  let ch = NaN;
 
   /** @type {string|null} */
   let match = null;
 
+  let token;
+  let new_pos;
+
   while (pos < length) {
     ch = input.charCodeAt(pos);
 
-    // TODO: try regex and map instead of switch?
+    // NOTE: This big switch statement benchmarks about 3 times faster than a
+    // symbol regexp and map lookup.
 
     switch (ch) {
       case 42: // *
-        tokens.push(new Token(Tokens.ASTERISK, undefined, pos));
+        tokens.push(new Token(T.ASTERISK, undefined, pos));
         pos += 1;
         break;
       case 64: // @
-        tokens.push(new Token(Tokens.AT, undefined, pos));
+        tokens.push(new Token(T.AT, undefined, pos));
         pos += 1;
         break;
       case 58: // :
-        tokens.push(new Token(Tokens.COLON, undefined, pos));
+        tokens.push(new Token(T.COLON, undefined, pos));
         pos += 1;
         break;
       case 44: // ,
-        tokens.push(new Token(Tokens.COMMA, undefined, pos));
+        tokens.push(new Token(T.COMMA, undefined, pos));
         pos += 1;
         break;
       case 36: // $
-        tokens.push(new Token(Tokens.DOLLAR, undefined, pos));
+        tokens.push(new Token(T.DOLLAR, undefined, pos));
         pos += 1;
         break;
       case 40: // (
-        tokens.push(new Token(Tokens.LEFT_PAREN, undefined, pos));
+        tokens.push(new Token(T.LEFT_PAREN, undefined, pos));
         pos += 1;
         break;
       case 91: // [
-        tokens.push(new Token(Tokens.LEFT_BRACKET, undefined, pos));
+        tokens.push(new Token(T.LEFT_BRACKET, undefined, pos));
         pos += 1;
         break;
       case 41: // )
-        tokens.push(new Token(Tokens.RIGHT_PAREN, undefined, pos));
+        tokens.push(new Token(T.RIGHT_PAREN, undefined, pos));
         pos += 1;
         break;
       case 93: // ]
-        tokens.push(new Token(Tokens.RIGHT_BRACKET, undefined, pos));
+        tokens.push(new Token(T.RIGHT_BRACKET, undefined, pos));
         pos += 1;
         break;
       case 33: // !
-        tokens.push(new Token(Tokens.NE, undefined, pos));
+        tokens.push(new Token(T.NE, undefined, pos));
         pos += 1;
         break;
       case 63: // ?
-        tokens.push(new Token(Tokens.QUESTION, undefined, pos));
+        tokens.push(new Token(T.QUESTION, undefined, pos));
         pos += 1;
         break;
       case 38: // &
         if (input.charCodeAt(pos + 1) == 38) {
-          tokens.push(new Token(Tokens.AND, undefined, pos));
+          tokens.push(new Token(T.AND, undefined, pos));
           pos += 2;
         } else {
           tokens.push(
-            new Token(
-              Tokens.ERROR,
-              "unknown token '&', did you mean '&&'?",
-              pos,
-            ),
+            new Token(T.ERROR, "unknown token '&', did you mean '&&'?", pos),
           );
           pos += 1;
         }
         break;
       case 124: // |
         if (input.charCodeAt(pos + 1) == 124) {
-          tokens.push(new Token(Tokens.OR, undefined, pos));
+          tokens.push(new Token(T.OR, undefined, pos));
           pos += 2;
         } else {
           tokens.push(
-            new Token(
-              Tokens.ERROR,
-              "unknown token '|', did you mean '||'?",
-              pos,
-            ),
+            new Token(T.ERROR, "unknown token '|', did you mean '||'?", pos),
           );
           pos += 1;
         }
         break;
       case 46: // .
         if (input.charCodeAt(pos + 1) == 46) {
-          tokens.push(new Token(Tokens.DOUBLE_DOT, undefined, pos));
+          tokens.push(new Token(T.DOUBLE_DOT, undefined, pos));
           pos += 2;
         } else {
-          tokens.push(new Token(Tokens.DOT, undefined, pos));
+          tokens.push(new Token(T.DOT, undefined, pos));
           pos += 1;
         }
         break;
       case 61: // =
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(Tokens.EQ, undefined, pos));
+          tokens.push(new Token(T.EQ, undefined, pos));
           pos += 2;
         } else {
           tokens.push(
-            new Token(
-              Tokens.ERROR,
-              "unknown token '=', did you mean '=='?",
-              pos,
-            ),
+            new Token(T.ERROR, "unknown token '=', did you mean '=='?", pos),
           );
           pos += 1;
         }
         break;
       case 62: // >
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(Tokens.GE, undefined, pos));
+          tokens.push(new Token(T.GE, undefined, pos));
           pos += 2;
         } else {
-          tokens.push(new Token(Tokens.GT, undefined, pos));
+          tokens.push(new Token(T.GT, undefined, pos));
           pos += 1;
         }
         break;
       case 60: // <
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(Tokens.LE, undefined, pos));
+          tokens.push(new Token(T.LE, undefined, pos));
           pos += 2;
         } else {
-          tokens.push(new Token(Tokens.LT, undefined, pos));
+          tokens.push(new Token(T.LT, undefined, pos));
           pos += 1;
         }
         break;
       case 39: // '
-        let [token, new_pos] = scan_single_quoted_string(input, pos + 1);
+        [token, new_pos] = scan_single_quoted_string(input, pos + 1);
         tokens.push(token);
         pos = new_pos;
         break;
@@ -158,38 +150,34 @@ export function tokenize(input) {
       default:
         match = scan(reName, input, pos);
         if (match) {
-          tokens.push(new Token(Tokens.NAME, match, pos));
+          tokens.push(new Token(T.NAME, match, pos));
           pos += match.length;
           continue;
         }
 
         match = scan(reTrivia, input, pos);
         if (match) {
-          tokens.push(new Token(Tokens.TRIVIA, match, pos));
+          tokens.push(new Token(T.TRIVIA, match, pos));
           pos += match.length;
           continue;
         }
 
         match = scan(reFloat, input, pos);
         if (match) {
-          tokens.push(new Token(Tokens.FLOAT, match, pos));
+          tokens.push(new Token(T.FLOAT, match, pos));
           pos += match.length;
           continue;
         }
 
         match = scan(reInt, input, pos);
         if (match) {
-          tokens.push(new Token(Tokens.INTEGER, match, pos));
+          tokens.push(new Token(T.INTEGER, match, pos));
           pos += match.length;
           continue;
         }
 
         tokens.push(
-          new Token(
-            Tokens.ERROR,
-            `unknown token '${String.fromCharCode(ch)}'`,
-            pos,
-          ),
+          new Token(T.ERROR, `unknown token '${String.fromCharCode(ch)}'`, pos),
         );
         pos += 1;
     }
@@ -221,11 +209,11 @@ function scan_single_quoted_string(input, pos) {
   const start = pos;
   const length = input.length;
 
-  /** @type {number|undefined} */
-  let ch = undefined;
+  /** @type {number} */
+  let ch = NaN;
 
   /** @type {import("./token").TokenKind} */
-  let kind = Tokens.SINGLE_QUOTED_STRING;
+  let kind = T.SINGLE_QUOTED_STRING;
 
   while (pos < length) {
     ch = input.charCodeAt(pos);
@@ -233,13 +221,10 @@ function scan_single_quoted_string(input, pos) {
     switch (ch) {
       case 92: // \
         pos += 2;
-        kind = Tokens.SINGLE_QUOTED_ESC_STRING;
+        kind = T.SINGLE_QUOTED_ESC_STRING;
         break;
       case NaN:
-        return [
-          new Token(Tokens.ERROR, "unclosed string literal", start),
-          length,
-        ];
+        return [new Token(T.ERROR, "unclosed string literal", start), length];
       case 39: // '
         return [new Token(kind, input.slice(start, pos), start), pos + 1];
       default:
@@ -247,8 +232,9 @@ function scan_single_quoted_string(input, pos) {
     }
   }
 
-  return [new Token(Tokens.ERROR, "unclosed string literal", start), length];
+  return [new Token(T.ERROR, "unclosed string literal", start), length];
 }
+
 /**
  *
  * @param {string} input
@@ -259,11 +245,11 @@ function scan_double_quoted_string(input, pos) {
   const start = pos;
   const length = input.length;
 
-  /** @type {number|undefined} */
-  let ch = undefined;
+  /** @type {number} */
+  let ch = NaN;
 
   /** @type {import("./token").TokenKind} */
-  let kind = Tokens.DOUBLE_QUOTED_STRING;
+  let kind = T.DOUBLE_QUOTED_STRING;
 
   while (pos < length) {
     ch = input.charCodeAt(pos);
@@ -271,13 +257,10 @@ function scan_double_quoted_string(input, pos) {
     switch (ch) {
       case 92: // \
         pos += 2;
-        kind = Tokens.DOUBLE_QUOTED_ESC_STRING;
+        kind = T.DOUBLE_QUOTED_ESC_STRING;
         break;
       case NaN:
-        return [
-          new Token(Tokens.ERROR, "unclosed string literal", start),
-          length,
-        ];
+        return [new Token(T.ERROR, "unclosed string literal", start), length];
       case 34: // "
         return [new Token(kind, input.slice(start, pos), start), pos + 1];
       default:
@@ -285,5 +268,5 @@ function scan_double_quoted_string(input, pos) {
     }
   }
 
-  return [new Token(Tokens.ERROR, "unclosed string literal", start), length];
+  return [new Token(T.ERROR, "unclosed string literal", start), length];
 }
