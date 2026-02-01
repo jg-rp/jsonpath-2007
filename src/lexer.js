@@ -1,7 +1,8 @@
 import { Token, T } from "./token";
 
 const reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
-const reInt = /-?\d+(?:[eE]\+?\d+)?/y;
+const reIndex = /\d+/y;
+const reInt = /-?\d+[eE]\+?\d+/y;
 const reName = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
 const reTrivia = /[ \n\r\t]+/y;
 
@@ -148,6 +149,8 @@ export function tokenize(input) {
         pos = new_pos;
         break;
       default:
+        // TODO: try checking `ch` character class before doing regexp
+
         match = scan(reName, input, pos);
         if (match) {
           tokens.push(new Token(T.NAME, match, pos));
@@ -172,6 +175,13 @@ export function tokenize(input) {
         match = scan(reInt, input, pos);
         if (match) {
           tokens.push(new Token(T.INTEGER, match, pos));
+          pos += match.length;
+          continue;
+        }
+
+        match = scan(reIndex, input, pos);
+        if (match) {
+          tokens.push(new Token(T.INDEX, match, pos));
           pos += match.length;
           continue;
         }

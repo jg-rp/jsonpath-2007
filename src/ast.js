@@ -4,14 +4,6 @@ import { JSONPathNode } from "./node";
 import { Token } from "./token";
 
 /**
- * @param {unknown} value
- * @returns {value is Record<string, unknown>}
- */
-function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/**
  * Base class for all JSONPath selectors.
  *
  * @abstract
@@ -28,10 +20,21 @@ export class Selector {
   }
 
   /**
-   * @param {JSONPathNode} node
+   * @abstract
+   * @param {JSONPathNode} _node
    * @returns {Array<JSONPathNode>}
    */
-  resolve(node) {}
+  resolve(_node) {
+    throw new Error("abstract method");
+  }
+
+  /**
+   * @abstract
+   * @returns {string}
+   */
+  toString() {
+    throw new Error("abstract method");
+  }
 }
 
 /**
@@ -74,6 +77,38 @@ export class Segment {
 }
 
 /**
+ * Base class for all filter expressions.
+ * @abstract
+ */
+export class Expression {
+  /** @type {Token} */
+  token;
+
+  /**
+   * @param {Token} token
+   */
+  constructor(token) {
+    this.token = token;
+  }
+
+  /**
+   * @abstract
+   * @param {FilterContext} _context
+   * @returns {unknown}
+   */
+  evaluate(_context) {
+    throw new Error("abstract method");
+  }
+
+  /**
+   * @abstract
+   */
+  toString() {
+    throw new Error("abstract method");
+  }
+}
+
+/**
  * JSONPath child segment.
  *
  * The child segment selects zero or more nodes from immediate children using
@@ -105,9 +140,13 @@ export class ChildSegment extends Segment {
    */
   toString() {
     // TODO:
+    throw new Error("TODO:");
   }
 }
 
+/**
+ * @extends Segment
+ */
 export class DescendantSegment {
   /** @type {Token} */
   token;
@@ -146,6 +185,7 @@ export class DescendantSegment {
 
   toString() {
     // TODO:
+    throw new Error("TODO:");
   }
 
   /**
@@ -172,10 +212,10 @@ export class DescendantSegment {
   }
 }
 
-export class NameSelector {
-  /** @type {Token} */
-  token;
-
+/**
+ * @extends Selector
+ */
+export class NameSelector extends Selector {
   /** @type {string} */
   name;
 
@@ -184,13 +224,14 @@ export class NameSelector {
    * @param {string} name
    */
   constructor(token, name) {
-    this.token = token;
+    super(token);
     this.name = name;
   }
 
   /**
    * @param {JSONPathNode} node
    * @returns {Array<JSONPathNode>}
+   * @override
    */
   resolve(node) {
     const result = [];
@@ -202,15 +243,20 @@ export class NameSelector {
     return result;
   }
 
+  /**
+   * @returns {string}
+   * @override
+   */
   toString() {
     // TODO:
+    throw new Error("TODO:");
   }
 }
 
-export class IndexSelector {
-  /** @type {Token} */
-  token;
-
+/**
+ * @extends Selector
+ */
+export class IndexSelector extends Selector {
   /** @type {number} */
   index;
 
@@ -219,12 +265,13 @@ export class IndexSelector {
    * @param {number} index
    */
   constructor(token, index) {
-    this.token = token;
+    super(token);
     this.index = index;
   }
   /**
    * @param {JSONPathNode} node
    * @returns {Array<JSONPathNode>}
+   * @override
    */
   resolve(node) {
     const result = [];
@@ -239,8 +286,13 @@ export class IndexSelector {
     return result;
   }
 
+  /**
+   * @returns {string}
+   * @override
+   */
   toString() {
     // TODO:
+    throw new Error("TODO:");
   }
 
   /**
@@ -254,10 +306,10 @@ export class IndexSelector {
   }
 }
 
-export class SliceSelector {
-  /** @type {Token} */
-  token;
-
+/**
+ * @extends Selector
+ */
+export class SliceSelector extends Selector {
   /** @type {number|undefined} */
   start;
 
@@ -274,7 +326,7 @@ export class SliceSelector {
    * @param {number|undefined} step
    */
   constructor(token, start = undefined, stop = undefined, step = undefined) {
-    this.token = token;
+    super(token);
     this.start = start;
     this.stop = stop;
     this.step = step;
@@ -283,45 +335,51 @@ export class SliceSelector {
   /**
    * @param {JSONPathNode} node
    * @returns {Array<JSONPathNode>}
+   * @override
    */
   resolve(node) {
     // TODO:
-    return [];
+    throw new Error("TODO:");
   }
 
+  /**
+   * @returns {string}
+   * @override
+   */
   toString() {
     // TODO:
+    throw new Error("TODO:");
   }
 }
 
-export class WildcardSelector {
-  /** @type {Token} */
-  token;
-
-  /**
-   * @param {Token} token
-   */
-  constructor(token) {
-    this.token = token;
-  }
+/**
+ * @extends Selector
+ */
+export class WildcardSelector extends Selector {
   /**
    * @param {JSONPathNode} node
    * @returns {Array<JSONPathNode>}
+   * @override
    */
   resolve(node) {
     // TODO:
-    return [];
+    throw new Error("TODO:");
   }
 
+  /**
+   * @returns {string}
+   * @override
+   */
   toString() {
     // TODO:
+    throw new Error("TODO:");
   }
 }
 
-export class FilterSelector {
-  /** @type {Token} */
-  token;
-
+/**
+ * @extends Selector
+ */
+export class FilterSelector extends Selector {
   /** @type {Expression} */
   expression;
 
@@ -330,59 +388,31 @@ export class FilterSelector {
    * @param {Expression} expression
    */
   constructor(token, expression) {
-    this.token = token;
+    super(token);
     this.expression = expression;
   }
   /**
    * @param {JSONPathNode} node
    * @returns {Array<JSONPathNode>}
+   * @override
    */
   resolve(node) {
     // TODO:
-    return [];
+    throw new Error("TODO:");
   }
 
+  /**
+   * @returns {string}
+   * @override
+   */
   toString() {
     // TODO:
+    throw new Error("TODO:");
   }
 }
 
 /**
- * Base class for all filter expressions.
- * @abstract
- */
-export class Expression {
-  /** @type {Token} */
-  token;
-
-  /**
-   * @param {Token} token
-   */
-  constructor(token) {
-    this.token = token;
-    if (new.target === Expression) {
-      throw new Error("Expression is abstract and cannot be instantiated");
-    }
-  }
-
-  /**
-   * @abstract
-   * @param {FilterContext} context
-   * @returns {unknown}
-   */
-  evaluate(context) {
-    throw new Error("abstract method");
-  }
-
-  /**
-   * @abstract
-   */
-  toString() {
-    throw new Error("abstract method");
-  }
-}
-
-/**
+ * Base class for filter expression literals.
  * @abstract
  * @extends Expression
  */
@@ -392,13 +422,364 @@ export class ExpressionLiteral extends Expression {}
  * @extends ExpressionLiteral
  */
 export class NullLiteral extends ExpressionLiteral {
-  /** @override */
-  evaluate(context) {
+  /**
+   * @param {FilterContext} _context
+   * @return {null}
+   * @override
+   */
+  evaluate(_context) {
     return null;
   }
 
-  /** @override */
+  /**
+   * @returns {string}
+   * @override
+   */
   toString() {
-    return "null";
+    // TODO:
+    throw new Error("TODO:");
   }
+}
+
+/**
+ * @extends ExpressionLiteral
+ */
+export class BooleanLiteral extends ExpressionLiteral {
+  /** @type {boolean} */
+  value;
+
+  /**
+   *
+   * @param {Token} token
+   * @param {boolean} value
+   */
+  constructor(token, value) {
+    super(token);
+    this.value = value;
+  }
+
+  /**
+   * @param {FilterContext} _context
+   * @return {boolean}
+   * @override
+   */
+  evaluate(_context) {
+    return this.value;
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * @extends ExpressionLiteral
+ */
+export class StringLiteral extends ExpressionLiteral {
+  /** @type {string} */
+  value;
+
+  /**
+   *
+   * @param {Token} token
+   * @param {string} value
+   */
+  constructor(token, value) {
+    super(token);
+    this.value = value;
+  }
+
+  /**
+   * @param {FilterContext} _context
+   * @return {string}
+   * @override
+   */
+  evaluate(_context) {
+    return this.value;
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * @extends ExpressionLiteral
+ */
+export class NumberLiteral extends ExpressionLiteral {
+  /** @type {number} */
+  value;
+
+  /**
+   *
+   * @param {Token} token
+   * @param {number} value
+   */
+  constructor(token, value) {
+    super(token);
+    this.value = value;
+  }
+
+  /**
+   * @param {FilterContext} _context
+   * @return {number}
+   * @override
+   */
+  evaluate(_context) {
+    return this.value;
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * Base class for all prefix expressions (only logical not for now).
+ * @abstract
+ * @extends Expression
+ */
+export class PrefixExpression extends Expression {
+  /** @type {Expression} */
+  right;
+
+  /**
+   *
+   * @param {Token} token
+   * @param {Expression} right
+   */
+  constructor(token, right) {
+    super(token);
+    this.right = right;
+  }
+}
+
+/**
+ * @extends PrefixExpression
+ */
+export class LogicalNotExpression extends PrefixExpression {
+  /**
+   * @param {FilterContext} _context
+   * @return {boolean}
+   * @override
+   */
+  evaluate(_context) {
+    // TODO:
+    throw new Error("TODO:");
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * Base class for all infix expressions (only logical `and` and `or`).
+ * @abstract
+ * @extends Expression
+ */
+export class InfixExpression extends Expression {
+  /** @type {Expression} */
+  left;
+
+  /** @type {Expression} */
+  right;
+
+  /**
+   *
+   * @param {Token} token
+   * @param {Expression} left
+   * @param {Expression} right
+   */
+  constructor(token, left, right) {
+    super(token);
+    this.left = left;
+    this.right = right;
+  }
+}
+
+/**
+ * @extends InfixExpression
+ */
+export class LogicalAndExpression extends InfixExpression {
+  /**
+   * @param {FilterContext} _context
+   * @return {boolean}
+   * @override
+   */
+  evaluate(_context) {
+    // TODO:
+    throw new Error("TODO:");
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * @extends InfixExpression
+ */
+export class LogicalOrExpression extends InfixExpression {
+  /**
+   * @param {FilterContext} _context
+   * @return {boolean}
+   * @override
+   */
+  evaluate(_context) {
+    // TODO:
+    throw new Error("TODO:");
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * Base class for all filter queries (absolute and relative).
+ * @abstract
+ * @extends Expression
+ */
+export class FilterQuery extends Expression {
+  /** @type {JSONPathQuery} */
+  query;
+
+  /**
+   *
+   * @param {Token} token
+   * @param {JSONPathQuery} query
+   */
+  constructor(token, query) {
+    super(token);
+    this.query = query;
+  }
+}
+
+/**
+ * @extends FilterQuery
+ */
+export class AbsoluteQuery extends FilterQuery {
+  /**
+   * @param {FilterContext} _context
+   * @return {boolean}
+   * @override
+   */
+  evaluate(_context) {
+    // TODO:
+    throw new Error("TODO:");
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * @extends FilterQuery
+ */
+export class RelativeQuery extends FilterQuery {
+  /**
+   * @param {FilterContext} _context
+   * @return {boolean}
+   * @override
+   */
+  evaluate(_context) {
+    // TODO:
+    throw new Error("TODO:");
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * @extends Expression
+ */
+export class FunctionExtension extends Expression {
+  /** @type {string} */
+  name;
+
+  /** @type {Array<Expression>} */
+  args;
+
+  /**
+   *
+   * @param {Token} token
+   * @param {string} name
+   * @param {Array<Expression>} args
+   */
+  constructor(token, name, args) {
+    super(token);
+    this.name = name;
+    this.args = args;
+  }
+
+  /**
+   * @param {FilterContext} _context
+   * @return {boolean}
+   * @override
+   */
+  evaluate(_context) {
+    // TODO:
+    throw new Error("TODO:");
+  }
+
+  /**
+   * @returns {string}
+   * @override
+   */
+  toString() {
+    // TODO:
+    throw new Error("TODO:");
+  }
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
