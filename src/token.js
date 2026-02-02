@@ -45,7 +45,7 @@ export const T = Object.freeze({
 export class Token {
   /**
    * @param {TokenKind} kind The kind of token.
-   * @param {string|undefined} value The token's value, or `undefined` if `kind` is unambiguous.
+   * @param {string} value The token's value.
    * @param {number} index The index of the start of this token in the input string.
    */
   constructor(kind, value, index) {

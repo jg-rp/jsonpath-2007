@@ -1,5 +1,45 @@
 import { T, Token } from "./token";
 
+const P = {
+  LOWEST: 1,
+  LOGICAL_OR: 3,
+  LOGICAL_AND: 4,
+  RELATIONAL: 5,
+  PREFIX: 7,
+};
+
+/** @type {Array<number>} */
+const PRECEDENCES = [];
+PRECEDENCES[T.AND] = P.LOGICAL_AND;
+PRECEDENCES[T.OR] = P.LOGICAL_OR;
+PRECEDENCES[T.NOT] = P.PREFIX;
+PRECEDENCES[T.EQ] = P.RELATIONAL;
+PRECEDENCES[T.GE] = P.RELATIONAL;
+PRECEDENCES[T.GT] = P.RELATIONAL;
+PRECEDENCES[T.LE] = P.RELATIONAL;
+PRECEDENCES[T.LT] = P.RELATIONAL;
+PRECEDENCES[T.NE] = P.RELATIONAL;
+
+/** @type {Array<boolean>} */
+const BINARY_OPERATORS = [];
+BINARY_OPERATORS[T.AND] = true;
+BINARY_OPERATORS[T.OR] = true;
+BINARY_OPERATORS[T.EQ] = true;
+BINARY_OPERATORS[T.GE] = true;
+BINARY_OPERATORS[T.GT] = true;
+BINARY_OPERATORS[T.LE] = true;
+BINARY_OPERATORS[T.LT] = true;
+BINARY_OPERATORS[T.NE] = true;
+
+/** @type {Array<boolean>} */
+const COMPARISON_OPERATORS = [];
+COMPARISON_OPERATORS[T.EQ] = true;
+COMPARISON_OPERATORS[T.GE] = true;
+COMPARISON_OPERATORS[T.GT] = true;
+COMPARISON_OPERATORS[T.LE] = true;
+COMPARISON_OPERATORS[T.LT] = true;
+COMPARISON_OPERATORS[T.NE] = true;
+
 /**
  *
  * @param {Array<Token>} tokens
@@ -87,7 +127,7 @@ function parse_shorthand_selector(state) {
       return { kind: "NameSelector", token, name: token.value };
     case T.ASTERISK:
       token = next(state);
-      return { kind: "WildcardSelector", token, index: token.value };
+      return { kind: "WildcardSelector", token };
     default:
       throw new Error(`expected a shorthand selector, found ${peek(state)}`);
   }
@@ -256,13 +296,213 @@ function parse_filter_selector(state) {
 /**
  *
  * @param {import("./types").ParseState} state
+ * @param {number} precedence
+ * @return {import("./types").Expression}
+ */
+function parse_filter_expression(state, precedence = P.LOWEST) {
+  let left = parse_primary(state);
+  let peeked;
+
+  for (;;) {
+    peeked = peek(state);
+    if (
+      peeked.kind == T.EOI ||
+      peeked.kind == T.RIGHT_BRACKET ||
+      !BINARY_OPERATORS[peeked.kind] ||
+      (PRECEDENCES[peeked.kind] || P.LOWEST) < precedence
+    ) {
+      break;
+    }
+
+    left = parse_infix_expression(state, left);
+  }
+
+  return left;
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @returns {import("./types").Expression}
+ */
+function parse_function_expression(state) {
+  const start_token = eat(state, T.NAME);
+
+  /** @type {Array<import("./types").Expression>} */
+  const args = [];
+
+  let expr;
+
+  while (peek(state).kind != T.RIGHT_PAREN) {
+    expr = parse_primary(state);
+
+    while (!!BINARY_OPERATORS[peek(state).kind]) {
+      expr = parse_infix_expression(state, expr);
+    }
+
+    args.push(expr);
+
+    if (peek(state).kind !== T.RIGHT_PAREN) {
+      eat(state, T.COMMA);
+    }
+  }
+
+  eat(state, T.RIGHT_PAREN);
+  validate_function_signature(start_token, args);
+
+  return {
+    kind: "FunctionExtension",
+    token: start_token,
+    name: start_token.value,
+    args,
+  };
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @returns {import("./types").Expression}
+ */
+function parse_primary(state) {
+  let peeked = peek(state);
+  let token;
+
+  switch (peeked.kind) {
+    case T.SINGLE_QUOTED_STRING:
+    case T.DOUBLE_QUOTED_STRING:
+    case T.SINGLE_QUOTED_ESC_STRING:
+    case T.DOUBLE_QUOTED_ESC_STRING:
+      token = next(state);
+      return {
+        kind: "StringLiteral",
+        token,
+        value: decode_string_literal(token),
+      };
+    case T.FALSE:
+      return { kind: "BooleanLiteral", token: next(state), value: false };
+    case T.TRUE:
+      return { kind: "BooleanLiteral", token: next(state), value: true };
+    case T.NAME:
+      if (peeked.value == "null") {
+        return { kind: "NullLiteral", token: next(state) };
+      }
+      return parse_function_expression(state);
+    case T.LEFT_PAREN:
+      return parse_grouped_expression(state);
+    case T.INDEX:
+    case T.INTEGER:
+      return parse_integer_literal(state);
+    case T.FLOAT:
+      return parse_float_literal(state);
+    case T.DOLLAR:
+      return parse_absolute_query(state);
+    case T.AT:
+      return parse_relative_query(state);
+    case T.NOT:
+      return parse_prefix_expression(state);
+    default:
+      token = next(state);
+      throw new Error(`unexpected ${token.value}`);
+  }
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @returns {import("./types").Expression}
+ */
+function parse_grouped_expression(state) {
+  eat(state, T.LEFT_PAREN);
+  let expr = parse_filter_expression(state);
+  let peeked;
+
+  for (;;) {
+    peeked = peek(state);
+    if (peeked.kind == T.RIGHT_PAREN) {
+      break;
+    }
+
+    if (peeked.kind === T.EOI) {
+      throw new Error("unbalanced parentheses");
+    }
+
+    expr = parse_infix_expression(state, expr);
+  }
+
+  eat(state, T.RIGHT_PAREN);
+  return expr;
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @returns {import("./types").Expression}
+ */
+function parse_prefix_expression(state) {
+  const token = eat(state, T.NOT);
+  return {
+    kind: "LogicalNot",
+    token,
+    expression: parse_filter_expression(state, P.PREFIX),
+  };
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @param {import("./types").Expression} left
+ * @returns {import("./types").Expression}
+ */
+function parse_infix_expression(state, left) {
+  const token = next(state);
+  const precedence = PRECEDENCES[token.kind] || P.LOWEST;
+  const right = parse_filter_expression(state, precedence);
+
+  if (COMPARISON_OPERATORS[token.kind]) {
+    throw_for_non_comparable(left);
+    throw_for_non_comparable(right);
+
+    switch (token.kind) {
+      case T.EQ:
+        return { kind: "EQ", token, left, right };
+      case T.NE:
+        return { kind: "NE", token, left, right };
+      case T.LT:
+        return { kind: "LT", token, left, right };
+      case T.LE:
+        return { kind: "LE", token, left, right };
+      case T.GT:
+        return { kind: "GT", token, left, right };
+      case T.GE:
+        return { kind: "GE", token, left, right };
+      default:
+        throw new Error("expected an infix operator");
+    }
+  } else {
+    throw_for_not_compared_literal(left);
+    throw_for_not_compared_literal(right);
+
+    switch (token.kind) {
+      case T.AND:
+        return { kind: "LogicalAnd", token, left, right };
+      case T.OR:
+        return { kind: "LogicalOr", token, left, right };
+      default:
+        throw new Error("expected an infix operator");
+    }
+  }
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
  * @returns {Token};
  */
 function next(state) {
   if (state.pos < state.tokens.length) {
-    return state.tokens[state.pos++] || new Token(T.EOI, undefined, -1);
+    return state.tokens[state.pos++] || new Token(T.EOI, "", -1);
   }
-  return new Token(T.EOI, undefined, -1);
+  return new Token(T.EOI, "", -1);
 }
 
 /**
@@ -271,7 +511,7 @@ function next(state) {
  * @returns {Token};
  */
 function peek(state) {
-  return state.tokens[state.pos] || new Token(T.EOI, undefined, -1);
+  return state.tokens[state.pos] || new Token(T.EOI, "", -1);
 }
 
 /**
@@ -296,4 +536,19 @@ function skip(state, kind) {
   if (state.tokens[state.pos]?.kind === kind) {
     state.pos += 1;
   }
+}
+
+/**
+ *
+ * @param {Token} token
+ * @returns {number}
+ */
+function parse_i_json_int(token) {
+  const value = token.value;
+
+  if (value.length > 1 && (value.startsWith("0") || value.startsWith("-0"))) {
+    throw new Error(`invalid index '${value}'`);
+  }
+
+  return Number(value);
 }

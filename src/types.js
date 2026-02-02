@@ -161,6 +161,14 @@ import { Token } from "./token";
  */
 
 /**
+ * @typedef {object} NE
+ * @property {"NE"} kind
+ * @property {Token} token
+ * @property {Expression} left
+ * @property {Expression} right
+ */
+
+/**
  * @typedef {object} AbsoluteQuery
  * @property {"AbsoluteQuery"} kind
  * @property {Token} token
@@ -183,7 +191,7 @@ import { Token } from "./token";
  */
 
 /**
- * @typedef {NullLiteral|BooleanLiteral|StringLiteral|NumberLiteral|LogicalNot|LogicalAnd|LogicalOr|AbsoluteQuery|RelativeQuery|FunctionExtension} Expression
+ * @typedef {NullLiteral|BooleanLiteral|StringLiteral|NumberLiteral|LogicalNot|LogicalAnd|LogicalOr|AbsoluteQuery|RelativeQuery|FunctionExtension|EQ|GT|GE|LT|LE|NE} Expression
  */
 
 /**

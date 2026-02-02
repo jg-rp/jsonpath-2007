@@ -35,52 +35,48 @@ export function tokenize(input) {
 
     switch (ch) {
       case 42: // *
-        tokens.push(new Token(T.ASTERISK, undefined, pos));
+        tokens.push(new Token(T.ASTERISK, "*", pos));
         pos += 1;
         break;
       case 64: // @
-        tokens.push(new Token(T.AT, undefined, pos));
+        tokens.push(new Token(T.AT, "@", pos));
         pos += 1;
         break;
       case 58: // :
-        tokens.push(new Token(T.COLON, undefined, pos));
+        tokens.push(new Token(T.COLON, ":", pos));
         pos += 1;
         break;
       case 44: // ,
-        tokens.push(new Token(T.COMMA, undefined, pos));
+        tokens.push(new Token(T.COMMA, ",", pos));
         pos += 1;
         break;
       case 36: // $
-        tokens.push(new Token(T.DOLLAR, undefined, pos));
+        tokens.push(new Token(T.DOLLAR, "$", pos));
         pos += 1;
         break;
       case 40: // (
-        tokens.push(new Token(T.LEFT_PAREN, undefined, pos));
+        tokens.push(new Token(T.LEFT_PAREN, "(", pos));
         pos += 1;
         break;
       case 91: // [
-        tokens.push(new Token(T.LEFT_BRACKET, undefined, pos));
+        tokens.push(new Token(T.LEFT_BRACKET, "[", pos));
         pos += 1;
         break;
       case 41: // )
-        tokens.push(new Token(T.RIGHT_PAREN, undefined, pos));
+        tokens.push(new Token(T.RIGHT_PAREN, ")", pos));
         pos += 1;
         break;
       case 93: // ]
-        tokens.push(new Token(T.RIGHT_BRACKET, undefined, pos));
-        pos += 1;
-        break;
-      case 33: // !
-        tokens.push(new Token(T.NE, undefined, pos));
+        tokens.push(new Token(T.RIGHT_BRACKET, "]", pos));
         pos += 1;
         break;
       case 63: // ?
-        tokens.push(new Token(T.QUESTION, undefined, pos));
+        tokens.push(new Token(T.QUESTION, "?", pos));
         pos += 1;
         break;
       case 38: // &
         if (input.charCodeAt(pos + 1) == 38) {
-          tokens.push(new Token(T.AND, undefined, pos));
+          tokens.push(new Token(T.AND, "&&", pos));
           pos += 2;
         } else {
           tokens.push(
@@ -91,7 +87,7 @@ export function tokenize(input) {
         break;
       case 124: // |
         if (input.charCodeAt(pos + 1) == 124) {
-          tokens.push(new Token(T.OR, undefined, pos));
+          tokens.push(new Token(T.OR, "||", pos));
           pos += 2;
         } else {
           tokens.push(
@@ -102,16 +98,16 @@ export function tokenize(input) {
         break;
       case 46: // .
         if (input.charCodeAt(pos + 1) == 46) {
-          tokens.push(new Token(T.DOUBLE_DOT, undefined, pos));
+          tokens.push(new Token(T.DOUBLE_DOT, "..", pos));
           pos += 2;
         } else {
-          tokens.push(new Token(T.DOT, undefined, pos));
+          tokens.push(new Token(T.DOT, ".", pos));
           pos += 1;
         }
         break;
       case 61: // =
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(T.EQ, undefined, pos));
+          tokens.push(new Token(T.EQ, "==", pos));
           pos += 2;
         } else {
           tokens.push(
@@ -120,21 +116,30 @@ export function tokenize(input) {
           pos += 1;
         }
         break;
-      case 62: // >
+      case 33: // !
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(T.GE, undefined, pos));
+          tokens.push(new Token(T.NE, "!=", pos));
           pos += 2;
         } else {
-          tokens.push(new Token(T.GT, undefined, pos));
+          tokens.push(new Token(T.NOT, "!", pos));
+          pos += 1;
+        }
+        break;
+      case 62: // >
+        if (input.charCodeAt(pos + 1) == 61) {
+          tokens.push(new Token(T.GE, ">=", pos));
+          pos += 2;
+        } else {
+          tokens.push(new Token(T.GT, ">", pos));
           pos += 1;
         }
         break;
       case 60: // <
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(T.LE, undefined, pos));
+          tokens.push(new Token(T.LE, "<=", pos));
           pos += 2;
         } else {
-          tokens.push(new Token(T.LT, undefined, pos));
+          tokens.push(new Token(T.LT, "<", pos));
           pos += 1;
         }
         break;
@@ -143,7 +148,7 @@ export function tokenize(input) {
         tokens.push(token);
         pos = new_pos;
         break;
-      case 34: // ""
+      case 34: // "
         [token, new_pos] = scan_double_quoted_string(input, pos + 1);
         tokens.push(token);
         pos = new_pos;
