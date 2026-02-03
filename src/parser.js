@@ -40,17 +40,21 @@ COMPARISON_OPERATORS[T.LE] = true;
 COMPARISON_OPERATORS[T.LT] = true;
 COMPARISON_OPERATORS[T.NE] = true;
 
+/** @type {import("./types").FunctionExtensions} */
+const FUNCTION_EXTENSIONS = {};
+
 /**
  *
  * @param {Array<Token>} tokens
- * @return {Array<import("./types").Segment>}
+ * @return {import("./types").JSONPathQuery}
  */
 export function parse(tokens) {
   /** @type {import("./types").ParseState} */
   const state = { tokens, pos: 0 };
   eat(state, T.DOLLAR);
-  // TODO: assert eoi
-  return parse_segments(state);
+  const segments = parseSegments(state);
+  eat(state, T.EOI);
+  return { segments };
 }
 
 /**
@@ -58,7 +62,7 @@ export function parse(tokens) {
  * @param {import("./types").ParseState} state
  * @returns {Array<import("./types").Segment>}
  */
-function parse_segments(state) {
+function parseSegments(state) {
   /** @type {Array<import("./types").Segment>} */
   const segments = [];
 
@@ -75,17 +79,17 @@ function parse_segments(state) {
         break;
       case T.DOUBLE_DOT:
         token = next(state);
-        selectors = parse_descendant_selectors(state);
+        selectors = parseDescendantSelectors(state);
         segments.push({ kind: "DescendantSegment", token, selectors });
         break;
       case T.DOT:
         token = next(state);
-        selectors = [parse_shorthand_selector(state)];
+        selectors = [parseShorthandSelector(state)];
         segments.push({ kind: "ChildSegment", token, selectors });
         break;
       case T.LEFT_BRACKET:
         token = peek(state);
-        selectors = parse_bracketed_selectors(state);
+        selectors = parseBracketedSelectors(state);
         segments.push({ kind: "ChildSegment", token, selectors });
         break;
       default:
@@ -101,13 +105,13 @@ function parse_segments(state) {
  * @param {import("./types").ParseState} state
  * @returns {Array<import("./types").Selector>}
  */
-function parse_descendant_selectors(state) {
+function parseDescendantSelectors(state) {
   switch (peek(state).kind) {
     case T.NAME:
     case T.ASTERISK:
-      return [parse_shorthand_selector(state)];
+      return [parseShorthandSelector(state)];
     case T.LEFT_BRACKET:
-      return parse_bracketed_selectors(state);
+      return parseBracketedSelectors(state);
     default:
       throw new Error(`expected a selector, found ${peek(state)}`);
   }
@@ -118,7 +122,7 @@ function parse_descendant_selectors(state) {
  * @param {import("./types").ParseState} state
  * @returns {import("./types").Selector}
  */
-function parse_shorthand_selector(state) {
+function parseShorthandSelector(state) {
   let token;
 
   switch (peek(state).kind) {
@@ -138,8 +142,8 @@ function parse_shorthand_selector(state) {
  * @param {import("./types").ParseState} state
  * @returns {Array<import("./types").Selector>}
  */
-function parse_bracketed_selectors(state) {
-  const start_token = eat(state, T.LEFT_BRACKET);
+function parseBracketedSelectors(state) {
+  const startToken = eat(state, T.LEFT_BRACKET);
 
   /** @type {Array<import("./types").Selector>} */
   const selectors = [];
@@ -153,7 +157,7 @@ function parse_bracketed_selectors(state) {
       case T.RIGHT_BRACKET:
         break loop;
       case T.INDEX:
-        selectors.push(parse_index_or_slice(state));
+        selectors.push(parseIndexOrSlice(state));
         break;
       case T.DOUBLE_QUOTED_STRING:
       case T.SINGLE_QUOTED_STRING:
@@ -163,17 +167,17 @@ function parse_bracketed_selectors(state) {
         selectors.push({
           kind: "NameSelector",
           token,
-          name: decode_string_literal(token),
+          name: decodeStringLiteral(token),
         });
         break;
       case T.COLON:
-        selectors.push(parse_slice_selector(state));
+        selectors.push(parseSliceSelector(state));
         break;
       case T.ASTERISK:
         selectors.push({ kind: "WildcardSelector", token: next(state) });
         break;
       case T.QUESTION:
-        selectors.push(parse_filter_selector(state));
+        selectors.push(parseFilterSelector(state));
         break;
       case T.EOI:
         throw new Error("unexpected end of query");
@@ -198,6 +202,7 @@ function parse_bracketed_selectors(state) {
     }
   }
 
+  skip(state, T.TRIVIA);
   eat(state, T.RIGHT_BRACKET);
 
   if (selectors.length === 0) {
@@ -212,9 +217,9 @@ function parse_bracketed_selectors(state) {
  * @param {import("./types").ParseState} state
  * @returns {import("./types").Selector}
  */
-function parse_index_or_slice(state) {
+function parseIndexOrSlice(state) {
   const token = eat(state, T.INDEX);
-  const index = parse_i_json_int(token);
+  const index = parseIJsonInt(token);
 
   skip(state, T.TRIVIA);
 
@@ -232,7 +237,7 @@ function parse_index_or_slice(state) {
   skip(state, T.TRIVIA);
 
   if (peek(state).kind === T.INDEX) {
-    stop = parse_i_json_int(next(state));
+    stop = parseIJsonInt(next(state));
     skip(state, T.TRIVIA);
   }
 
@@ -241,7 +246,7 @@ function parse_index_or_slice(state) {
     skip(state, T.TRIVIA);
 
     if (peek(state).kind === T.INDEX) {
-      step = parse_i_json_int(next(state));
+      step = parseIJsonInt(next(state));
     }
   }
 
@@ -252,7 +257,7 @@ function parse_index_or_slice(state) {
  * @param {import("./types").ParseState} state
  * @returns {import("./types").Selector}
  */
-function parse_slice_selector(state) {
+function parseSliceSelector(state) {
   const token = eat(state, T.COLON);
   skip(state, T.TRIVIA);
 
@@ -263,7 +268,7 @@ function parse_slice_selector(state) {
   let step = undefined;
 
   if (peek(state).kind === T.INDEX) {
-    stop = parse_i_json_int(next(state));
+    stop = parseIJsonInt(next(state));
     skip(state, T.TRIVIA);
   }
 
@@ -272,7 +277,7 @@ function parse_slice_selector(state) {
     skip(state, T.TRIVIA);
 
     if (peek(state).kind === T.INDEX) {
-      step = parse_i_json_int(next(state));
+      step = parseIJsonInt(next(state));
     }
   }
 
@@ -284,13 +289,12 @@ function parse_slice_selector(state) {
  * @param {import("./types").ParseState} state
  * @return {import("./types").Selector}
  */
-function parse_filter_selector(state) {
+function parseFilterSelector(state) {
   const token = eat(state, T.QUESTION);
-  const expression = parse_filter_expression(state);
-
-  // TODO: raise if must be compared
-
-  return { kind: "FilterSelector", token, expression };
+  const expr = parseFilterExpression(state);
+  throwForNonComparable(expr, FUNCTION_EXTENSIONS);
+  throwForNotCompared(expr);
+  return { kind: "FilterSelector", token, expression: expr };
 }
 
 /**
@@ -299,8 +303,8 @@ function parse_filter_selector(state) {
  * @param {number} precedence
  * @return {import("./types").Expression}
  */
-function parse_filter_expression(state, precedence = P.LOWEST) {
-  let left = parse_primary(state);
+function parseFilterExpression(state, precedence = P.LOWEST) {
+  let left = parsePrimary(state);
   let peeked;
 
   for (;;) {
@@ -314,7 +318,7 @@ function parse_filter_expression(state, precedence = P.LOWEST) {
       break;
     }
 
-    left = parse_infix_expression(state, left);
+    left = parseInfixExpression(state, left);
   }
 
   return left;
@@ -325,8 +329,8 @@ function parse_filter_expression(state, precedence = P.LOWEST) {
  * @param {import("./types").ParseState} state
  * @returns {import("./types").Expression}
  */
-function parse_function_expression(state) {
-  const start_token = eat(state, T.NAME);
+function parseFunctionExpression(state) {
+  const startToken = eat(state, T.NAME);
 
   /** @type {Array<import("./types").Expression>} */
   const args = [];
@@ -334,26 +338,28 @@ function parse_function_expression(state) {
   let expr;
 
   while (peek(state).kind != T.RIGHT_PAREN) {
-    expr = parse_primary(state);
+    expr = parsePrimary(state);
 
     while (!!BINARY_OPERATORS[peek(state).kind]) {
-      expr = parse_infix_expression(state, expr);
+      expr = parseInfixExpression(state, expr);
     }
 
     args.push(expr);
 
     if (peek(state).kind !== T.RIGHT_PAREN) {
+      skip(state, T.TRIVIA);
       eat(state, T.COMMA);
     }
   }
 
+  skip(state, T.TRIVIA);
   eat(state, T.RIGHT_PAREN);
-  validate_function_signature(start_token, args);
+  validateFunctionSignature(startToken, args, FUNCTION_EXTENSIONS);
 
   return {
     kind: "FunctionExtension",
-    token: start_token,
-    name: start_token.value,
+    token: startToken,
+    name: startToken.value,
     args,
   };
 }
@@ -363,7 +369,8 @@ function parse_function_expression(state) {
  * @param {import("./types").ParseState} state
  * @returns {import("./types").Expression}
  */
-function parse_primary(state) {
+function parsePrimary(state) {
+  skip(state, T.TRIVIA);
   let peeked = peek(state);
   let token;
 
@@ -376,7 +383,7 @@ function parse_primary(state) {
       return {
         kind: "StringLiteral",
         token,
-        value: decode_string_literal(token),
+        value: decodeStringLiteral(token),
       };
     case T.FALSE:
       return { kind: "BooleanLiteral", token: next(state), value: false };
@@ -386,20 +393,19 @@ function parse_primary(state) {
       if (peeked.value == "null") {
         return { kind: "NullLiteral", token: next(state) };
       }
-      return parse_function_expression(state);
+      return parseFunctionExpression(state);
     case T.LEFT_PAREN:
-      return parse_grouped_expression(state);
+      return parseGroupedExpression(state);
     case T.INDEX:
     case T.INTEGER:
-      return parse_integer_literal(state);
     case T.FLOAT:
-      return parse_float_literal(state);
+      return parseNumberLiteral(state);
     case T.DOLLAR:
-      return parse_absolute_query(state);
+      return parseAbsoluteQuery(state);
     case T.AT:
-      return parse_relative_query(state);
+      return parseRelativeQuery(state);
     case T.NOT:
-      return parse_prefix_expression(state);
+      return parsePrefixExpression(state);
     default:
       token = next(state);
       throw new Error(`unexpected ${token.value}`);
@@ -411,12 +417,13 @@ function parse_primary(state) {
  * @param {import("./types").ParseState} state
  * @returns {import("./types").Expression}
  */
-function parse_grouped_expression(state) {
+function parseGroupedExpression(state) {
   eat(state, T.LEFT_PAREN);
-  let expr = parse_filter_expression(state);
+  let expr = parseFilterExpression(state);
   let peeked;
 
   for (;;) {
+    skip(state, T.TRIVIA);
     peeked = peek(state);
     if (peeked.kind == T.RIGHT_PAREN) {
       break;
@@ -426,9 +433,10 @@ function parse_grouped_expression(state) {
       throw new Error("unbalanced parentheses");
     }
 
-    expr = parse_infix_expression(state, expr);
+    expr = parseInfixExpression(state, expr);
   }
 
+  skip(state, T.TRIVIA);
   eat(state, T.RIGHT_PAREN);
   return expr;
 }
@@ -438,12 +446,12 @@ function parse_grouped_expression(state) {
  * @param {import("./types").ParseState} state
  * @returns {import("./types").Expression}
  */
-function parse_prefix_expression(state) {
+function parsePrefixExpression(state) {
   const token = eat(state, T.NOT);
   return {
     kind: "LogicalNot",
     token,
-    expression: parse_filter_expression(state, P.PREFIX),
+    expression: parseFilterExpression(state, P.PREFIX),
   };
 }
 
@@ -453,14 +461,14 @@ function parse_prefix_expression(state) {
  * @param {import("./types").Expression} left
  * @returns {import("./types").Expression}
  */
-function parse_infix_expression(state, left) {
+function parseInfixExpression(state, left) {
   const token = next(state);
   const precedence = PRECEDENCES[token.kind] || P.LOWEST;
-  const right = parse_filter_expression(state, precedence);
+  const right = parseFilterExpression(state, precedence);
 
   if (COMPARISON_OPERATORS[token.kind]) {
-    throw_for_non_comparable(left);
-    throw_for_non_comparable(right);
+    throwForNonComparable(left, FUNCTION_EXTENSIONS);
+    throwForNonComparable(right, FUNCTION_EXTENSIONS);
 
     switch (token.kind) {
       case T.EQ:
@@ -479,8 +487,8 @@ function parse_infix_expression(state, left) {
         throw new Error("expected an infix operator");
     }
   } else {
-    throw_for_not_compared_literal(left);
-    throw_for_not_compared_literal(right);
+    throwForNotCompared(left);
+    throwForNotCompared(right);
 
     switch (token.kind) {
       case T.AND:
@@ -491,6 +499,50 @@ function parse_infix_expression(state, left) {
         throw new Error("expected an infix operator");
     }
   }
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @returns {import("./types").Expression}
+ */
+function parseNumberLiteral(state) {
+  const token = next(state);
+  const value = token.value;
+
+  if (value.startsWith("0") && value.length > 1) {
+    throw new Error("invalid integer literal");
+  }
+
+  const num = Number(value);
+
+  if (isNaN(num)) {
+    throw new Error("invalid integer literal");
+  }
+
+  return { kind: "NumberLiteral", token, value: num };
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @returns {import("./types").Expression}
+ */
+function parseAbsoluteQuery(state) {
+  const token = eat(state, T.DOLLAR);
+  const segments = parseSegments(state);
+  return { kind: "AbsoluteQuery", token, query: { segments } };
+}
+
+/**
+ *
+ * @param {import("./types").ParseState} state
+ * @returns {import("./types").Expression}
+ */
+function parseRelativeQuery(state) {
+  const token = eat(state, T.AT);
+  const segments = parseSegments(state);
+  return { kind: "RelativeQuery", token, query: { segments } };
 }
 
 /**
@@ -521,10 +573,11 @@ function peek(state) {
  * @return {Token}
  */
 function eat(state, kind) {
-  if (state.tokens[state.pos]?.kind !== kind) {
-    throw new Error(`expected ${kind}, found ${state.tokens[state.pos]?.kind}`);
+  const token = state.tokens[state.pos++];
+  if (token === undefined || token?.kind !== kind) {
+    throw new Error(`expected ${kind}, found ${token?.kind}`);
   }
-  return state.tokens[state.pos++];
+  return token;
 }
 
 /**
@@ -543,7 +596,7 @@ function skip(state, kind) {
  * @param {Token} token
  * @returns {number}
  */
-function parse_i_json_int(token) {
+function parseIJsonInt(token) {
   const value = token.value;
 
   if (value.length > 1 && (value.startsWith("0") || value.startsWith("-0"))) {
@@ -551,4 +604,353 @@ function parse_i_json_int(token) {
   }
 
   return Number(value);
+}
+
+/**
+ *
+ * @param {Token} token
+ * @returns {string}
+ */
+function decodeStringLiteral(token) {
+  switch (token.kind) {
+    case T.SINGLE_QUOTED_STRING:
+      return token.value.replaceAll('"', '\\"').replaceAll("\\'", "'");
+    case T.DOUBLE_QUOTED_STRING:
+      return token.value;
+    case T.SINGLE_QUOTED_ESC_STRING:
+      return unescapeString(
+        token.value.replaceAll('"', '\\"').replaceAll("\\'", "'"),
+        token,
+      );
+    case T.DOUBLE_QUOTED_ESC_STRING:
+      return unescapeString(token.value, token);
+    default:
+      throw new Error(`expected a string literal, found ${token}`);
+  }
+}
+
+/**
+ *
+ * @param {string} value
+ * @param {Token} token
+ * @returns {string}
+ */
+function unescapeString(value, token) {
+  /** @type {Array<string>} */
+  const result = [];
+  const length = value.length;
+
+  let ch = "";
+  let index = 0;
+  let codePoint;
+
+  while (index < length) {
+    ch = value[index] || "";
+
+    if (ch !== "\\") {
+      codePoint = ch.codePointAt(0);
+      if (codePoint === undefined || codePoint <= 0x1f) {
+        throw new Error("invalid character");
+      }
+
+      result.push(ch);
+      continue;
+    }
+
+    index += 1;
+    ch = value[index] || "";
+
+    switch (ch) {
+      case '"':
+        result.push('"');
+        break;
+      case "\\":
+        result.push("\\");
+        break;
+      case "/":
+        result.push("/");
+        break;
+      case "b":
+        result.push("\x08");
+        break;
+      case "f":
+        result.push("\x0C");
+        break;
+      case "n":
+        result.push("\n");
+        break;
+      case "r":
+        result.push("\r");
+        break;
+      case "t":
+        result.push("\t");
+        break;
+      case "u":
+        index += 1;
+        [ch, index] = decodeSlashU(value, index, token);
+        result.push(ch);
+        break;
+      default:
+        throw new Error("unknown escape sequence");
+    }
+  }
+
+  return result.join("");
+}
+
+/**
+ *
+ * @param {string} value
+ * @param {number} index
+ * @param {Token} token
+ * @return {[string, number]}
+ */
+function decodeSlashU(value, index, token) {
+  const length = value.length;
+
+  if (index + 3 >= length) {
+    throw new Error("incomplete escape sequence");
+  }
+
+  let codePoint = parseInt(value.slice(index, 4), 16);
+
+  if (isNaN(codePoint)) {
+    throw new Error("invalid escape sequence");
+  }
+
+  if (isLowSurrogate(codePoint)) {
+    throw new Error("invalid escape sequence");
+  }
+
+  if (isHighSurrogate(codePoint)) {
+    if (value.startsWith("\\u", index + 4)) {
+      throw new Error("invalid escape sequence");
+    }
+
+    const lowSurrogate = parseInt(value.slice(index + 6, index + 10), 16);
+
+    if (!isLowSurrogate(lowSurrogate)) {
+      throw new Error("invalid escape sequence");
+    }
+
+    codePoint =
+      0x10000 + (((codePoint & 0x03ff) << 10) | (lowSurrogate & 0x03ff));
+
+    index += 9;
+  } else {
+    index += 3;
+  }
+
+  if (isNaN(codePoint) || codePoint <= 0x1f) {
+    throw new Error("invalid escape sequence");
+  }
+
+  return [String.fromCodePoint(codePoint), index];
+}
+
+/**
+ *
+ * @param {number} codepoint
+ * @returns {boolean}
+ */
+function isHighSurrogate(codepoint) {
+  return codepoint >= 0xd800 && codepoint <= 0xdbff;
+}
+
+/**
+ *
+ * @param {number} codepoint
+ * @returns {boolean}
+ */
+function isLowSurrogate(codepoint) {
+  return codepoint >= 0xdc00 && codepoint <= 0xdfff;
+}
+
+/**
+ *
+ * @param {import("./types").Expression} expr
+ * @returns {void}
+ */
+function throwForNotCompared(expr) {
+  if (!isLiteralExpression(expr)) {
+    throw new Error("expression literals must be compared");
+  }
+}
+
+/**
+ *
+ * @param {import("./types").Expression} expr
+ * @param {import("./types").FunctionExtensions} functionExtensions
+ * @returns {void}
+ */
+function throwForNonComparable(expr, functionExtensions) {
+  if (isFilterQuery(expr) && !isSingularQuery(expr.query)) {
+    throw new Error("non-singular query is not comparable");
+  }
+
+  if (expr.kind === "FunctionExtension") {
+    let func = functionExtensions[expr.name];
+
+    if (func === undefined) {
+      throw new Error(`unknown function extension ${expr.name}`);
+    }
+
+    if (func.returnType === "ValueType") {
+      throw new Error(`result of ${expr.name}() is not comparable`);
+    }
+  }
+}
+
+/**
+ *
+ * @param {Token} token
+ * @param {Array<import("./types").Expression>} args
+ * @param {import("./types").FunctionExtensions} functionExtensions
+ * @return {void}
+ */
+function validateFunctionSignature(token, args, functionExtensions) {
+  const func = functionExtensions[token.value];
+  if (func === undefined) {
+    throw new Error(`unknown function extension ${token.value}`);
+  }
+
+  const expectedArgCount = func.argTypes.length;
+
+  if (args.length !== expectedArgCount) {
+    throw new Error(
+      `${token.value} takes ${expectedArgCount} argument${expectedArgCount === 1 ? "" : "s"} (${args.length} given)`,
+    );
+  }
+
+  for (let i = 0; i < expectedArgCount; i++) {
+    const arg = args[i];
+
+    switch (func.argTypes[i]) {
+      case "ValueType":
+        if (
+          !(
+            isLiteralExpression(arg) ||
+            (isFilterQuery(arg) && isSingularQuery(arg.query)) ||
+            (arg?.kind === "FunctionExtension" &&
+              functionExtensions[arg.name]?.returnType === "ValueType")
+          )
+        ) {
+          throw new Error(
+            `${token.value}() argument ${i} must be of ValueType`,
+          );
+        }
+        break;
+      case "LogicalType":
+        if (!(isFilterQuery(arg) || isInfixExpression(arg))) {
+          throw new Error(
+            `${token.value}() argument ${i} must be of LogicalType`,
+          );
+        }
+        break;
+      case "NodesType":
+        if (
+          !isFilterQuery(arg) ||
+          (arg?.kind === "FunctionExtension" &&
+            functionExtensions[arg.name]?.returnType === "NodesType")
+        ) {
+          throw new Error(
+            `${token.value}() argument ${i} must be of NodesType`,
+          );
+        }
+        break;
+    }
+  }
+}
+
+/**
+ *
+ * @param {import("./types").Expression|undefined} expr
+ * @returns {node is import("./types").LiteralExpression}
+ */
+function isLiteralExpression(expr) {
+  switch (expr?.kind) {
+    case "NullLiteral":
+    case "BooleanLiteral":
+    case "StringLiteral":
+    case "NumberLiteral":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ *
+ * @param {import("./types").Expression|undefined} expr
+ * @returns {node is import("./types").FilterQuery}
+ */
+function isFilterQuery(expr) {
+  switch (expr?.kind) {
+    case "AbsoluteQuery":
+    case "RelativeQuery":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ *
+ * @param {import("./types").Expression|undefined} expr
+ * @returns {node is import("./types").InfixExpression}
+ */
+function isInfixExpression(expr) {
+  switch (expr?.kind) {
+    case "LogicalAnd":
+    case "LogicalOr":
+    case "EQ":
+    case "GT":
+    case "GE":
+    case "LT":
+    case "LE":
+    case "NE":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ *
+ * @param {import("./types").JSONPathQuery} query
+ * @returns {boolean}
+ */
+function isSingularQuery(query) {
+  let segment;
+  let selector;
+
+  for (let i = 0; i < query.segments.length; i++) {
+    segment = query.segments[i];
+
+    if (!segment) {
+      return false;
+    }
+
+    if (segment.kind === "DescendantSegment") {
+      return false;
+    }
+
+    if (segment.selectors.length > 1) {
+      return false;
+    }
+
+    selector = segment.selectors[0];
+
+    if (!selector) {
+      return false;
+    }
+
+    if (selector.kind === "NameSelector" || selector.kind == "IndexSelector") {
+      continue;
+    }
+
+    return false;
+  }
+
+  return true;
 }

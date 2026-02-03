@@ -8,8 +8,29 @@ import { Token } from "./token";
  */
 
 /**
+ * @typedef {object} JSONPathNodeList
+ * @property {"JSONPathNodeList"} kind
+ * @property {Array<JSONPathNode>} nodes
+ */
+
+/**
  * @typedef {object} JSONPathQuery
  * @property {Array<Segment>} segments
+ */
+
+/**
+ * @typedef {"ValueType"|"LogicalType"|"NodesType"} FunctionType
+ */
+
+/**
+ * @typedef {object} FunctionDefinition
+ * @property {Array<FunctionType>} argTypes
+ * @property {FunctionType} returnType
+ * @property {() => unknown} call
+ */
+
+/**
+ * @typedef {Record<String,FunctionDefinition>} FunctionExtensions
  */
 
 /**
@@ -192,6 +213,23 @@ import { Token } from "./token";
 
 /**
  * @typedef {NullLiteral|BooleanLiteral|StringLiteral|NumberLiteral|LogicalNot|LogicalAnd|LogicalOr|AbsoluteQuery|RelativeQuery|FunctionExtension|EQ|GT|GE|LT|LE|NE} Expression
+ */
+/**
+ * @typedef {LogicalAnd|LogicalOr|EQ|GT|GE|LT|LE|NE} InfixExpression
+ */
+
+/**
+ * @typedef {NullLiteral|BooleanLiteral|StringLiteral|NumberLiteral} LiteralExpression
+ */
+
+/**
+ * @typedef {AbsoluteQuery|RelativeQuery} FilterQuery
+ */
+
+/**
+ * @typedef {object} FilterContext
+ * @property {unknown} value
+ * @property {unknown} root
  */
 
 /**
