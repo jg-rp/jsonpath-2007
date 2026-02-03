@@ -1,5 +1,8 @@
 var NOTHING = {};
 
+/** @type {import("./types").FunctionExtensions} */
+const FUNCTION_EXTENSIONS = {};
+
 /**
  *
  * @param {import("./types").JSONPathQuery} query
@@ -100,6 +103,7 @@ function resolveSelector(selector, node) {
               evaluateExpression(selector.expression, {
                 value: node.value[i],
                 root: node.root,
+                functionExtensions: FUNCTION_EXTENSIONS,
               }),
             )
           ) {
@@ -113,6 +117,7 @@ function resolveSelector(selector, node) {
               evaluateExpression(selector.expression, {
                 value: value,
                 root: node.root,
+                functionExtensions: FUNCTION_EXTENSIONS,
               }),
             )
           ) {
@@ -200,8 +205,17 @@ function evaluateExpression(expr, context) {
     case "RelativeQuery":
       return resolve(expr.query, context.value);
     case "FunctionExtension":
-      // TODO:
-      break;
+      const func = context.functionExtensions[expr.name];
+
+      if (!func) {
+        throw new Error(`filter function '${expr.name}' is undefined`);
+      }
+
+      const args = expr.args.map(function (arg, i) {
+        unpackNodeList(evaluateExpression(arg, context), func.argTypes[i]);
+      });
+
+      return func.call(...args);
     default:
       break;
   }
@@ -291,6 +305,30 @@ function slice(value, selector) {
   }
 
   return sliced;
+}
+
+/**
+ * @param {unknown} arg
+ * @param {import("./types").FunctionType|undefined} argType
+ * @returns {unknown}
+ */
+function unpackNodeList(arg, argType) {
+  if (argType === "NodesType") {
+    return arg;
+  }
+
+  if (!isNodeList(arg)) {
+    return arg;
+  }
+
+  switch (arg.nodes.length) {
+    case 0:
+      return NOTHING;
+    case 1:
+      return arg.nodes[0]?.value;
+    default:
+      return arg;
+  }
 }
 
 /**

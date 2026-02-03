@@ -573,8 +573,8 @@ function peek(state) {
  * @return {Token}
  */
 function eat(state, kind) {
-  const token = state.tokens[state.pos++];
-  if (token === undefined || token?.kind !== kind) {
+  const token = state.tokens[state.pos++] || new Token(T.EOI, "", -1);
+  if (token.kind !== kind) {
     throw new Error(`expected ${kind}, found ${token?.kind}`);
   }
   return token;

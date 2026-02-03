@@ -26,7 +26,7 @@ import { Token } from "./token";
  * @typedef {object} FunctionDefinition
  * @property {Array<FunctionType>} argTypes
  * @property {FunctionType} returnType
- * @property {() => unknown} call
+ * @property {function(...unknown):unknown} call
  */
 
 /**
@@ -230,6 +230,7 @@ import { Token } from "./token";
  * @typedef {object} FilterContext
  * @property {unknown} value
  * @property {unknown} root
+ * @property {FunctionExtensions} functionExtensions
  */
 
 /**
