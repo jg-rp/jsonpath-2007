@@ -1,4 +1,4 @@
-export const T = Object.freeze({
+var T = {
   AND: 1,
   ASTERISK: 2,
   AT: 3,
@@ -36,21 +36,5 @@ export const T = Object.freeze({
   SINGLE_QUOTED_ESC_STRING: 35,
   TRUE: 36,
   TRIVIA: 37,
-  WORD: 38,
-});
-
-/**
- * @typedef {typeof T[keyof typeof T]} TokenKind
- */
-export class Token {
-  /**
-   * @param {TokenKind} kind The kind of token.
-   * @param {string} value The token's value.
-   * @param {number} index The index of the start of this token in the input string.
-   */
-  constructor(kind, value, index) {
-    this.kind = kind;
-    this.value = value;
-    this.index = index;
-  }
-}
+  WORD: 38
+};

@@ -1,42 +1,35 @@
 var NOTHING = {};
 
-/**
- *
- * @param {import("./types").JSONPathQuery} query
- * @param {unknown} data
- * @returns {Array<import("./types").JSONPathNode>}
- */
-export function resolve(query, data) {
+function resolve(query, data) {
   /** @type {Array<import("./types").JSONPathNode>} */
-  let nodes = [{ value: data, location: [], root: data }];
-  for (const segment of query.segments) {
-    nodes = resolveSegment(segment, nodes);
+  var nodes = [{ value: data, location: [], root: data }];
+  for (var segment in query.segments) {
+    nodes = resolveSegment(query.segments[segment], nodes);
   }
   return nodes;
 }
 
-/**
- *
- * @param {import("./types").Segment} segment
- * @param {Array<import("./types").JSONPathNode>} nodes
- * @returns {Array<import("./types").JSONPathNode>}
- */
 function resolveSegment(segment, nodes) {
-  /** @type {Array<import("./types").JSONPathNode>} */
-  const result = [];
+  var result = [];
 
   switch (segment.kind) {
     case "ChildSegment":
-      for (const node of nodes) {
-        for (const selector of segment.selectors) {
-          result.push(...resolveSelector(selector, node));
+      for (var node in nodes) {
+        for (var selector in segment.selectors) {
+          for (_node in resolveSelector(
+            segment.selectors[selector],
+            nodes[node]
+          )) {
+            result.push(_node);
+          }
         }
       }
       break;
     case "DescendantSegment":
-      for (const node of nodes) {
-        for (const _node of visit(node)) {
-          for (const selector of segment.selectors) {
+      for (var node in nodes) {
+        // XXX
+        for (var _node in visit(nodes[node])) {
+          for (var selector in segment.selectors) {
             result.push(...resolveSelector(selector, _node));
           }
         }
@@ -47,15 +40,8 @@ function resolveSegment(segment, nodes) {
   return result;
 }
 
-/**
- *
- * @param {import("./types").Selector} selector
- * @param {import("./types").JSONPathNode} node
- * @returns {Array<import("./types").JSONPathNode>}
- */
 function resolveSelector(selector, node) {
-  /** @type {Array<import("./types").JSONPathNode>} */
-  const result = [];
+  var result = [];
 
   switch (selector.kind) {
     case "NameSelector":
@@ -68,7 +54,7 @@ function resolveSelector(selector, node) {
       break;
     case "IndexSelector":
       if (Array.isArray(node.value)) {
-        const normIndex = normalizedIndex(selector.index, node.value.length);
+        var normIndex = normalizedIndex(selector.index, node.value.length);
         if (normIndex in node.value) {
           result.push(newChild(node, node.value[normIndex], normIndex));
         }
@@ -76,46 +62,46 @@ function resolveSelector(selector, node) {
       break;
     case "SliceSelector":
       if (Array.isArray(node.value)) {
-        for (const [i, value] of slice(node.value, selector)) {
+        for (var [i, value] of slice(node.value, selector)) {
           result.push(newChild(node, value, i));
         }
       }
       break;
     case "WildcardSelector":
       if (Array.isArray(node.value)) {
-        for (let i = 0; i < node.value.length; i++) {
+        for (var i = 0; i < node.value.length; i++) {
           result.push(newChild(node, node.value[i], i));
         }
       } else if (isPlainObject(node.value)) {
-        for (const [key, value] of Object.entries(node.value)) {
+        for (var [key, value] of Object.entries(node.value)) {
           result.push(newChild(node, value, key));
         }
       }
       break;
     case "FilterSelector":
       if (Array.isArray(node.value)) {
-        for (let i = 0; i < node.value.length; i++) {
+        for (var i = 0; i < node.value.length; i++) {
           if (
             isTruthy(
               evaluateExpression(selector.expression, {
                 value: node.value[i],
                 root: node.root,
-                functionExtensions: FUNCTION_EXTENSIONS,
-              }),
+                functionExtensions: FUNCTION_EXTENSIONS
+              })
             )
           ) {
             result.push(newChild(node, node.value[i], i));
           }
         }
       } else if (isPlainObject(node.value)) {
-        for (const [key, value] of Object.entries(node.value)) {
+        for (var [key, value] of Object.entries(node.value)) {
           if (
             isTruthy(
               evaluateExpression(selector.expression, {
                 value: value,
                 root: node.root,
-                functionExtensions: FUNCTION_EXTENSIONS,
-              }),
+                functionExtensions: FUNCTION_EXTENSIONS
+              })
             )
           ) {
             result.push(newChild(node, value, key));
@@ -130,15 +116,9 @@ function resolveSelector(selector, node) {
   return result;
 }
 
-/**
- *
- * @param {import("./types").Expression} expr
- * @param {import("./types").FilterContext} context
- * @returns {unknown}
- */
 function evaluateExpression(expr, context) {
-  let left;
-  let right;
+  var left;
+  var right;
 
   switch (expr.kind) {
     case "NullLiteral":
@@ -220,24 +200,24 @@ function evaluateExpression(expr, context) {
     case "AbsoluteQuery":
       return {
         kind: "JSONPathNodeList",
-        nodes: resolve(expr.query, context.root),
+        nodes: resolve(expr.query, context.root)
       };
     case "RelativeQuery":
       return {
         kind: "JSONPathNodeList",
-        nodes: resolve(expr.query, context.value),
+        nodes: resolve(expr.query, context.value)
       };
     case "FunctionExtension":
-      const func = context.functionExtensions[expr.name];
+      var func = context.functionExtensions[expr.name];
 
       if (!func) {
         throw new Error(`filter function '${expr.name}' is undefined`);
       }
 
-      const args = expr.args.map(function (arg, i) {
+      var args = expr.args.map(function (arg, i) {
         return unpackNodeList(
           evaluateExpression(arg, context),
-          func.argTypes[i],
+          func.argTypes[i]
         );
       });
 
@@ -247,21 +227,15 @@ function evaluateExpression(expr, context) {
   }
 }
 
-/**
- *
- * @param {import("./types").JSONPathNode} node
- * @param {number} depth
- * @returns
- */
 function visit(node, depth = 1) {
-  const result = [node];
+  var result = [node];
 
   if (Array.isArray(node.value)) {
-    for (let i = 0; i < node.value.length; i++) {
+    for (var i = 0; i < node.value.length; i++) {
       result.push(...visit(newChild(node, node.value[i], i), depth + 1));
     }
   } else if (isPlainObject(node.value)) {
-    for (const [key, value] of Object.entries(node.value)) {
+    for (var [key, value] of Object.entries(node.value)) {
       result.push(...visit(newChild(node, value, key), depth + 1));
     }
   }
@@ -269,28 +243,17 @@ function visit(node, depth = 1) {
   return result;
 }
 
-/**
- * @param {number} index
- * @param {number} length
- * @returns {number}
- */
 function normalizedIndex(index, length) {
   if (index < 0 && length >= Math.abs(index)) return length + index;
   return index;
 }
 
-/**
- *
- * @param {Array<unknown>} value
- * @param {import("./types").SliceSelector} selector
- * @returns {Array<[number, unknown]>}
- */
 function slice(value, selector) {
   if (value.length === 0) return [];
 
-  let start = selector.start;
-  let stop = selector.stop;
-  let step = selector.step;
+  var start = selector.start;
+  var stop = selector.stop;
+  var step = selector.step;
 
   // Handle negative start and stop values
   if (start === undefined || start === null) {
@@ -317,15 +280,14 @@ function slice(value, selector) {
     step = 1;
   }
 
-  /** @type {Array<[number, unknown]>} */
-  const sliced = [];
+  var sliced = [];
 
   if (step > 0) {
-    for (let i = start; i < stop; i += step) {
+    for (var i = start; i < stop; i += step) {
       sliced.push([i, value[i]]);
     }
   } else {
-    for (let i = start; i > stop; i += step) {
+    for (var i = start; i > stop; i += step) {
       sliced.push([i, value[i]]);
     }
   }
@@ -333,11 +295,6 @@ function slice(value, selector) {
   return sliced;
 }
 
-/**
- * @param {unknown} arg
- * @param {import("./types").FunctionType|undefined} argType
- * @returns {unknown}
- */
 function unpackNodeList(arg, argType) {
   if (argType === "NodesType") {
     return arg;
@@ -357,48 +314,22 @@ function unpackNodeList(arg, argType) {
   }
 }
 
-/**
- *
- * @param {import("./types").JSONPathNode} node
- * @param {unknown} value
- * @param {string|number} key
- * @returns {import("./types").JSONPathNode}
- */
 function newChild(node, value, key) {
   return { value, location: [...node.location, key], root: node.root };
 }
 
-/**
- * @param {unknown} value
- * @returns {value is Record<string, unknown>}
- */
 function isPlainObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/**
- *
- * @param {unknown} value
- * @returns {value is string}
- */
 function isString(value) {
   return typeof value === "string";
 }
 
-/**
- *
- * @param {unknown} value
- * @returns {value is number}
- */
 function isNumber(value) {
   return typeof value === "number";
 }
 
-/**
- *
- * @param {unknown} value
- * @returns {boolean}
- */
 function isTruthy(value) {
   if (isNodeList(value) && value.nodes.length === 0) {
     return false;
@@ -407,21 +338,10 @@ function isTruthy(value) {
   return !(typeof value === "boolean" && value === false);
 }
 
-/**
- *
- * @param {any} value
- * @returns {value is import("./types").JSONPathNodeList}
- */
 function isNodeList(value) {
   return value && value.kind === "JSONPathNodeList";
 }
 
-/**
- *
- * @param {unknown} left
- * @param {unknown} right
- * @returns {boolean}
- */
 function eq(left, right) {
   if (isNodeList(right)) [left, right] = [right, left];
 
@@ -454,12 +374,6 @@ function eq(left, right) {
   return deepEquals(left, right);
 }
 
-/**
- *
- * @param {unknown} left
- * @param {unknown} right
- * @returns {boolean}
- */
 function lt(left, right) {
   if (
     (isString(left) && isString(right)) ||
@@ -469,12 +383,6 @@ function lt(left, right) {
   return false;
 }
 
-/**
- *
- * @param {unknown} a
- * @param {unknown} b
- * @returns {boolean}
- */
 function deepEquals(a, b) {
   if (a === b) {
     return true;
@@ -485,7 +393,7 @@ function deepEquals(a, b) {
       if (a.length !== b.length) {
         return false;
       }
-      for (let i = 0; i < a.length; i++) {
+      for (var i = 0; i < a.length; i++) {
         if (!deepEquals(a[i], b[i])) {
           return false;
         }
@@ -494,14 +402,14 @@ function deepEquals(a, b) {
     }
     return false;
   } else if (isPlainObject(a) && isPlainObject(b)) {
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
+    var keysA = Object.keys(a);
+    var keysB = Object.keys(b);
 
     if (keysA.length !== keysB.length) {
       return false;
     }
 
-    for (const key of keysA) {
+    for (var key of keysA) {
       if (!deepEquals(a[key], b[key])) {
         return false;
       }
@@ -513,17 +421,15 @@ function deepEquals(a, b) {
   return false;
 }
 
-/** @type {import("./types").FunctionDefinition} */
-export const CountFunctionExtension = {
+var CountFunctionExtension = {
   argTypes: ["NodesType"],
   returnType: "ValueType",
   call: function (nodeList) {
     return nodeList.nodes.length;
-  },
+  }
 };
 
-/** @type {import("./types").FunctionDefinition} */
-export const LengthFunctionExtension = {
+var LengthFunctionExtension = {
   argTypes: ["ValueType"],
   returnType: "ValueType",
   call: function (value) {
@@ -531,11 +437,10 @@ export const LengthFunctionExtension = {
     if (Array.isArray(value) || isString(value)) return value.length;
     if (isPlainObject(value)) return Object.keys(value).length;
     return NOTHING;
-  },
+  }
 };
 
-/** @type {import("./types").FunctionDefinition} */
-export const MatchFunctionExtension = {
+var MatchFunctionExtension = {
   argTypes: ["ValueType", "ValueType"],
   returnType: "LogicalType",
   call: function (value, pattern) {
@@ -545,16 +450,15 @@ export const MatchFunctionExtension = {
 
     try {
       // TODO: cache
-      const re = new RegExp(fullMatch(pattern), "u");
+      var re = new RegExp(fullMatch(pattern), "u");
       return re.test(value);
     } catch (error) {
       return false;
     }
-  },
+  }
 };
 
-/** @type {import("./types").FunctionDefinition} */
-export const SearchFunctionExtension = {
+var SearchFunctionExtension = {
   argTypes: ["ValueType", "ValueType"],
   returnType: "LogicalType",
   call: function (value, pattern) {
@@ -564,29 +468,28 @@ export const SearchFunctionExtension = {
 
     try {
       // TODO: cache
-      const re = new RegExp(mapRegexp(pattern), "u");
+      var re = new RegExp(mapRegexp(pattern), "u");
       return !!value.match(re);
     } catch (error) {
       return false;
     }
-  },
+  }
 };
 
-/** @type {import("./types").FunctionDefinition} */
-export const ValueFunctionExtension = {
+var ValueFunctionExtension = {
   argTypes: ["NodesType"],
   returnType: "ValueType",
   call: function (nodeList) {
     if (nodeList.nodes.length === 1) return nodeList.nodes[0].value;
     return NOTHING;
-  },
+  }
 };
 
 function mapRegexp(pattern) {
-  let escaped = false;
-  let charClass = false;
-  const parts = [];
-  for (const ch of pattern) {
+  var escaped = false;
+  var charClass = false;
+  var parts = [];
+  for (var ch of pattern) {
     if (escaped) {
       parts.push(ch);
       escaped = false;
@@ -622,29 +525,24 @@ function mapRegexp(pattern) {
 }
 
 function fullMatch(pattern) {
-  const parts = [];
-  const explicitCaret = pattern.startsWith("^");
-  const explicitDollar = pattern.endsWith("$");
+  var parts = [];
+  var explicitCaret = pattern.startsWith("^");
+  var explicitDollar = pattern.endsWith("$");
   if (!explicitCaret && !explicitDollar) parts.push("^(?:");
   parts.push(mapRegexp(pattern));
   if (!explicitCaret && !explicitDollar) parts.push(")$");
   return parts.join("");
 }
 
-/** @type {import("./types").FunctionExtensions} */
-export const FUNCTION_EXTENSIONS = {
+var FUNCTION_EXTENSIONS = {
   count: CountFunctionExtension,
   length: LengthFunctionExtension,
   match: MatchFunctionExtension,
   search: SearchFunctionExtension,
-  value: ValueFunctionExtension,
+  value: ValueFunctionExtension
 };
 
-/**
- *
- * @param {import("./types").JSONPathNode} node
- */
-export function canonicalPath(node) {
+function canonicalPath(node) {
   return (
     "$" +
     node.location
@@ -659,11 +557,6 @@ export function canonicalPath(node) {
   );
 }
 
-/**
- *
- * @param {string} name
- * @returns {string}
- */
 function canonicalString(name) {
   return `'${JSON.stringify(name).slice(1, -1).replaceAll('\\"', '"').replaceAll("'", "\\'")}'`;
 }

@@ -1,19 +1,16 @@
-import { T, Token } from "./token";
-import { FUNCTION_EXTENSIONS } from "./path";
+var MAX_INDEX = Math.pow(2, 53) - 1;
+var MIN_INDEX = -Math.pow(2, 53) + 1;
 
-const MAX_INDEX = Math.pow(2, 53) - 1;
-const MIN_INDEX = -Math.pow(2, 53) + 1;
-
-const P = {
+var P = {
   LOWEST: 1,
   LOGICAL_OR: 3,
   LOGICAL_AND: 4,
   RELATIONAL: 5,
-  PREFIX: 7,
+  PREFIX: 7
 };
 
 /** @type {Array<number>} */
-const PRECEDENCES = [];
+var PRECEDENCES = [];
 PRECEDENCES[T.AND] = P.LOGICAL_AND;
 PRECEDENCES[T.OR] = P.LOGICAL_OR;
 PRECEDENCES[T.NOT] = P.PREFIX;
@@ -25,7 +22,7 @@ PRECEDENCES[T.LT] = P.RELATIONAL;
 PRECEDENCES[T.NE] = P.RELATIONAL;
 
 /** @type {Array<boolean>} */
-const BINARY_OPERATORS = [];
+var BINARY_OPERATORS = [];
 BINARY_OPERATORS[T.AND] = true;
 BINARY_OPERATORS[T.OR] = true;
 BINARY_OPERATORS[T.EQ] = true;
@@ -36,7 +33,7 @@ BINARY_OPERATORS[T.LT] = true;
 BINARY_OPERATORS[T.NE] = true;
 
 /** @type {Array<boolean>} */
-const COMPARISON_OPERATORS = [];
+var COMPARISON_OPERATORS = [];
 COMPARISON_OPERATORS[T.EQ] = true;
 COMPARISON_OPERATORS[T.GE] = true;
 COMPARISON_OPERATORS[T.GT] = true;
@@ -44,31 +41,18 @@ COMPARISON_OPERATORS[T.LE] = true;
 COMPARISON_OPERATORS[T.LT] = true;
 COMPARISON_OPERATORS[T.NE] = true;
 
-/**
- *
- * @param {Array<Token>} tokens
- * @return {import("./types").JSONPathQuery}
- */
-export function parse(tokens) {
-  /** @type {import("./types").ParseState} */
-  const state = { tokens, pos: 0 };
+function parse(tokens) {
+  var state = { tokens: tokens, pos: 0 };
   eat(state, T.DOLLAR);
-  const segments = parseSegments(state);
+  var segments = parseSegments(state);
   eat(state, T.EOI);
-  return { segments };
+  return { segments: segments };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {Array<import("./types").Segment>}
- */
 function parseSegments(state) {
-  /** @type {Array<import("./types").Segment>} */
-  const segments = [];
-
-  let token;
-  let selectors;
+  var segments = [];
+  var token;
+  var selectors;
 
   loop: for (;;) {
     switch (peek(state).kind) {
@@ -81,17 +65,29 @@ function parseSegments(state) {
       case T.DOUBLE_DOT:
         token = next(state);
         selectors = parseDescendantSelectors(state);
-        segments.push({ kind: "DescendantSegment", token, selectors });
+        segments.push({
+          kind: "DescendantSegment",
+          token: token,
+          selectors: selectors
+        });
         break;
       case T.DOT:
         token = next(state);
         selectors = [parseShorthandSelector(state)];
-        segments.push({ kind: "ChildSegment", token, selectors });
+        segments.push({
+          kind: "ChildSegment",
+          token: token,
+          selectors: selectors
+        });
         break;
       case T.LEFT_BRACKET:
         token = peek(state);
         selectors = parseBracketedSelectors(state);
-        segments.push({ kind: "ChildSegment", token, selectors });
+        segments.push({
+          kind: "ChildSegment",
+          token: token,
+          selectors: selectors
+        });
         break;
       default:
         break loop;
@@ -101,11 +97,6 @@ function parseSegments(state) {
   return segments;
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {Array<import("./types").Selector>}
- */
 function parseDescendantSelectors(state) {
   switch (peek(state).kind) {
     case T.NAME:
@@ -114,42 +105,31 @@ function parseDescendantSelectors(state) {
     case T.LEFT_BRACKET:
       return parseBracketedSelectors(state);
     default:
-      throw new Error(`expected a selector, found ${peek(state)}`);
+      var message = "expected a selector, found " + peek(state);
+      throw new Error(message);
   }
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Selector}
- */
 function parseShorthandSelector(state) {
-  let token;
+  var token;
 
   switch (peek(state).kind) {
     case T.NAME:
       token = next(state);
-      return { kind: "NameSelector", token, name: token.value };
+      return { kind: "NameSelector", token: token, name: token.value };
     case T.ASTERISK:
       token = next(state);
-      return { kind: "WildcardSelector", token };
+      return { kind: "WildcardSelector", token: token };
     default:
-      throw new Error(`expected a shorthand selector, found ${peek(state)}`);
+      var message = "expected a shorthand selector, found " + peek(state);
+      throw new Error(message);
   }
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {Array<import("./types").Selector>}
- */
 function parseBracketedSelectors(state) {
-  const startToken = eat(state, T.LEFT_BRACKET);
-
-  /** @type {Array<import("./types").Selector>} */
-  const selectors = [];
-
-  let token;
+  var startToken = eat(state, T.LEFT_BRACKET);
+  var selectors = [];
+  var token;
 
   loop: for (;;) {
     skip(state, T.TRIVIA);
@@ -167,8 +147,8 @@ function parseBracketedSelectors(state) {
         token = next(state);
         selectors.push({
           kind: "NameSelector",
-          token,
-          name: decodeStringLiteral(token),
+          token: token,
+          name: decodeStringLiteral(token)
         });
         break;
       case T.COLON:
@@ -183,7 +163,8 @@ function parseBracketedSelectors(state) {
       case T.EOI:
         throw new Error("unexpected end of query");
       default:
-        throw new Error(`unexpected ${token} in bracketed selection`);
+        var message = "unexpected " + token + "in bracketed selection";
+        throw new Error(message);
     }
 
     skip(state, T.TRIVIA);
@@ -213,26 +194,18 @@ function parseBracketedSelectors(state) {
   return selectors;
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Selector}
- */
 function parseIndexOrSlice(state) {
-  const token = eat(state, T.INDEX);
-  const index = parseIJsonInt(token);
+  var token = eat(state, T.INDEX);
+  var index = parseIJsonInt(token);
 
   skip(state, T.TRIVIA);
 
   if (peek(state).kind !== T.COLON) {
-    return { kind: "IndexSelector", token, index };
+    return { kind: "IndexSelector", token: token, index: index };
   }
 
-  /** @type {number|undefined} */
-  let stop = undefined;
-
-  /** @type {number|undefined} */
-  let step = undefined;
+  var stop = undefined;
+  var step = undefined;
 
   eat(state, T.COLON);
   skip(state, T.TRIVIA);
@@ -251,22 +224,21 @@ function parseIndexOrSlice(state) {
     }
   }
 
-  return { kind: "SliceSelector", token, start: index, stop, step };
+  return {
+    kind: "SliceSelector",
+    token: token,
+    start: index,
+    stop: stop,
+    step: step
+  };
 }
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Selector}
- */
+
 function parseSliceSelector(state) {
-  const token = eat(state, T.COLON);
+  var token = eat(state, T.COLON);
   skip(state, T.TRIVIA);
 
-  /** @type {number|undefined} */
-  let stop = undefined;
-
-  /** @type {number|undefined} */
-  let step = undefined;
+  var stop = undefined;
+  var step = undefined;
 
   if (peek(state).kind === T.INDEX) {
     stop = parseIJsonInt(next(state));
@@ -282,30 +254,25 @@ function parseSliceSelector(state) {
     }
   }
 
-  return { kind: "SliceSelector", token, start: undefined, stop, step };
+  return {
+    kind: "SliceSelector",
+    token: token,
+    start: undefined,
+    stop: stop,
+    step: step
+  };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @return {import("./types").Selector}
- */
 function parseFilterSelector(state) {
-  const token = eat(state, T.QUESTION);
-  const expr = parseFilterExpression(state);
+  var token = eat(state, T.QUESTION);
+  var expr = parseFilterExpression(state, P.LOWEST);
   throwForNotCompared(expr, FUNCTION_EXTENSIONS);
-  return { kind: "FilterSelector", token, expression: expr };
+  return { kind: "FilterSelector", token: token, expression: expr };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @param {number} precedence
- * @return {import("./types").Expression}
- */
-function parseFilterExpression(state, precedence = P.LOWEST) {
-  let left = parsePrimary(state);
-  let peeked;
+function parseFilterExpression(state, precedence) {
+  var left = parsePrimary(state);
+  var peeked;
 
   for (;;) {
     skip(state, T.TRIVIA);
@@ -325,19 +292,12 @@ function parseFilterExpression(state, precedence = P.LOWEST) {
   return left;
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Expression}
- */
 function parseFunctionExpression(state) {
-  const startToken = eat(state, T.NAME);
+  var startToken = eat(state, T.NAME);
   eat(state, T.LEFT_PAREN);
 
-  /** @type {Array<import("./types").Expression>} */
-  const args = [];
-
-  let expr;
+  var args = [];
+  var expr;
 
   while (peek(state).kind != T.RIGHT_PAREN) {
     expr = parsePrimary(state);
@@ -363,19 +323,14 @@ function parseFunctionExpression(state) {
     kind: "FunctionExtension",
     token: startToken,
     name: startToken.value,
-    args,
+    arg: args
   };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Expression}
- */
 function parsePrimary(state) {
   skip(state, T.TRIVIA);
-  let peeked = peek(state);
-  let token;
+  var peeked = peek(state);
+  var token;
 
   switch (peeked.kind) {
     case T.SINGLE_QUOTED_STRING:
@@ -385,8 +340,8 @@ function parsePrimary(state) {
       token = next(state);
       return {
         kind: "StringLiteral",
-        token,
-        value: decodeStringLiteral(token),
+        token: token,
+        value: decodeStringLiteral(token)
       };
     case T.NAME:
       if (peeked.value == "null") {
@@ -413,19 +368,14 @@ function parsePrimary(state) {
       return parsePrefixExpression(state);
     default:
       token = next(state);
-      throw new Error(`unexpected ${token.value}`);
+      throw new Error("unexpected " + token.value);
   }
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Expression}
- */
 function parseGroupedExpression(state) {
   eat(state, T.LEFT_PAREN);
-  let expr = parseFilterExpression(state);
-  let peeked;
+  var expr = parseFilterExpression(state, P.LOWEST);
+  var peeked;
 
   for (;;) {
     skip(state, T.TRIVIA);
@@ -446,30 +396,19 @@ function parseGroupedExpression(state) {
   return expr;
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Expression}
- */
 function parsePrefixExpression(state) {
-  const token = eat(state, T.NOT);
+  var token = eat(state, T.NOT);
   return {
     kind: "LogicalNot",
-    token,
-    expression: parseFilterExpression(state, P.PREFIX),
+    token: token,
+    expression: parseFilterExpression(state, P.PREFIX)
   };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @param {import("./types").Expression} left
- * @returns {import("./types").Expression}
- */
 function parseInfixExpression(state, left) {
-  const token = next(state);
-  const precedence = PRECEDENCES[token.kind] || P.LOWEST;
-  const right = parseFilterExpression(state, precedence);
+  var token = next(state);
+  var precedence = PRECEDENCES[token.kind] || P.LOWEST;
+  var right = parseFilterExpression(state, precedence);
 
   if (COMPARISON_OPERATORS[token.kind]) {
     throwForNonComparable(left, FUNCTION_EXTENSIONS);
@@ -477,17 +416,17 @@ function parseInfixExpression(state, left) {
 
     switch (token.kind) {
       case T.EQ:
-        return { kind: "EQ", token, left, right };
+        return { kind: "EQ", token: token, left: left, right: right };
       case T.NE:
-        return { kind: "NE", token, left, right };
+        return { kind: "NE", token: token, left: left, right: right };
       case T.LT:
-        return { kind: "LT", token, left, right };
+        return { kind: "LT", token: token, left: left, right: right };
       case T.LE:
-        return { kind: "LE", token, left, right };
+        return { kind: "LE", token: token, left: left, right: right };
       case T.GT:
-        return { kind: "GT", token, left, right };
+        return { kind: "GT", token: token, left: left, right: right };
       case T.GE:
-        return { kind: "GE", token, left, right };
+        return { kind: "GE", token: token, left: left, right: right };
       default:
         throw new Error("expected an infix operator");
     }
@@ -497,64 +436,44 @@ function parseInfixExpression(state, left) {
 
     switch (token.kind) {
       case T.AND:
-        return { kind: "LogicalAnd", token, left, right };
+        return { kind: "LogicalAnd", token: token, left: left, right: right };
       case T.OR:
-        return { kind: "LogicalOr", token, left, right };
+        return { kind: "LogicalOr", token: token, left: left, right: right };
       default:
         throw new Error("expected an infix operator");
     }
   }
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Expression}
- */
 function parseNumberLiteral(state) {
-  const token = next(state);
-  const value = token.value;
+  var token = next(state);
+  var value = token.value;
 
   if (value.startsWith("0") && value.length > 1) {
     throw new Error("invalid integer literal");
   }
 
-  const num = Number(value);
+  var num = Number(value);
 
   if (isNaN(num)) {
     throw new Error("invalid integer literal");
   }
 
-  return { kind: "NumberLiteral", token, value: num };
+  return { kind: "NumberLiteral", token: token, value: num };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Expression}
- */
 function parseAbsoluteQuery(state) {
-  const token = eat(state, T.DOLLAR);
-  const segments = parseSegments(state);
-  return { kind: "AbsoluteQuery", token, query: { segments } };
+  var token = eat(state, T.DOLLAR);
+  var segments = parseSegments(state);
+  return { kind: "AbsoluteQuery", token: token, query: { segments: segments } };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {import("./types").Expression}
- */
 function parseRelativeQuery(state) {
-  const token = eat(state, T.AT);
-  const segments = parseSegments(state);
-  return { kind: "RelativeQuery", token, query: { segments } };
+  var token = eat(state, T.AT);
+  var segments = parseSegments(state);
+  return { kind: "RelativeQuery", token: token, query: { segments: segments } };
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {Token};
- */
 function next(state) {
   if (state.pos < state.tokens.length) {
     return state.tokens[state.pos++] || new Token(T.EOI, "", -1);
@@ -562,56 +481,36 @@ function next(state) {
   return new Token(T.EOI, "", -1);
 }
 
-/**
- *
- * @param {import("./types").ParseState} state
- * @returns {Token};
- */
 function peek(state) {
   return state.tokens[state.pos] || new Token(T.EOI, "", -1);
 }
 
-/**
- * Assert the current token's kind and return it. Advance the token position.
- * @param {import("./types").ParseState} state
- * @param {import("./token").TokenKind} kind
- * @return {Token}
- */
 function eat(state, kind) {
-  const token = state.tokens[state.pos++] || new Token(T.EOI, "", -1);
+  var token = state.tokens[state.pos++] || new Token(T.EOI, "", -1);
   if (token.kind !== kind) {
-    throw new Error(`expected ${kind}, found ${token?.kind}`);
+    var message = "expected " + kind + ", found " + token.kind;
+    throw new Error(message);
   }
   return token;
 }
 
-/**
- * Skip the next token if it matches `kind`.
- * @param {import("./types").ParseState} state
- * @param {import("./token").TokenKind} kind
- */
 function skip(state, kind) {
-  if (state.tokens[state.pos]?.kind === kind) {
+  if (peek(state).kind === kind) {
     state.pos += 1;
   }
 }
 
-/**
- *
- * @param {Token} token
- * @returns {number}
- */
 function parseIJsonInt(token) {
-  const value = token.value;
+  var value = token.value;
 
   if (value.length > 1 && (value.startsWith("0") || value.startsWith("-0"))) {
-    throw new Error(`invalid index '${value}'`);
+    throw new Error("invalid index '" + value + "'");
   }
 
-  const num = Number(value);
+  var num = Number(value);
 
   if (isNaN(num)) {
-    throw new Error(`invalid index '${value}'`);
+    throw new Error("invalid index '" + value + "'");
   }
 
   if (num < MIN_INDEX || num > MAX_INDEX) {
@@ -621,11 +520,6 @@ function parseIJsonInt(token) {
   return num;
 }
 
-/**
- *
- * @param {Token} token
- * @returns {string}
- */
 function decodeStringLiteral(token) {
   switch (token.kind) {
     case T.SINGLE_QUOTED_STRING:
@@ -635,29 +529,23 @@ function decodeStringLiteral(token) {
     case T.SINGLE_QUOTED_ESC_STRING:
       return unescapeString(
         token.value.replaceAll('"', '\\"').replaceAll("\\'", "'"),
-        token,
+        token
       );
     case T.DOUBLE_QUOTED_ESC_STRING:
       return unescapeString(token.value, token);
     default:
-      throw new Error(`expected a string literal, found ${token}`);
+      throw new Error("expected a string literal, found " + token);
   }
 }
 
-/**
- *
- * @param {string} value
- * @param {Token} token
- * @returns {string}
- */
 function unescapeString(value, token) {
-  /** @type {Array<string>} */
-  const result = [];
-  const length = value.length;
+  var result = [];
+  var length = value.length;
 
-  let ch = "";
-  let index = 0;
-  let codePoint;
+  var ch = "";
+  var index = 0;
+  var codePoint;
+  var chAndIndex;
 
   while (index < length) {
     ch = value[index] || "";
@@ -703,8 +591,9 @@ function unescapeString(value, token) {
         break;
       case "u":
         index += 1;
-        [ch, index] = decodeSlashU(value, index, token);
-        result.push(ch);
+        chAndIndex = decodeSlashU(value, index, token);
+        result.push(chAndIndex[0]);
+        index = chAndIndex[1];
         break;
       default:
         throw new Error("unknown escape sequence");
@@ -716,26 +605,19 @@ function unescapeString(value, token) {
   return result.join("");
 }
 
-/**
- *
- * @param {string} value
- * @param {number} index
- * @param {Token} token
- * @return {[string, number]}
- */
 function decodeSlashU(value, index, token) {
-  const length = value.length;
+  var length = value.length;
 
   if (index + 3 >= length) {
     throw new Error("incomplete escape sequence");
   }
 
-  let digits = value.slice(index, index + 4);
+  var digits = value.slice(index, index + 4);
   if (!/^[a-fA-F0-9]{4}$/.test(digits)) {
     throw new Error("invalid escape sequence");
   }
 
-  let codePoint = parseInt(digits, 16);
+  var codePoint = parseInt(digits, 16);
 
   if (isNaN(codePoint)) {
     throw new Error("unexpected low surrogate");
@@ -755,7 +637,7 @@ function decodeSlashU(value, index, token) {
       throw new Error("invalid escape sequence");
     }
 
-    const lowSurrogate = parseInt(digits, 16);
+    var lowSurrogate = parseInt(digits, 16);
 
     if (!isLowSurrogate(lowSurrogate)) {
       throw new Error("invalid escape sequence");
@@ -776,95 +658,75 @@ function decodeSlashU(value, index, token) {
   return [String.fromCodePoint(codePoint), index];
 }
 
-/**
- *
- * @param {number} codepoint
- * @returns {boolean}
- */
 function isHighSurrogate(codepoint) {
   return codepoint >= 0xd800 && codepoint <= 0xdbff;
 }
 
-/**
- *
- * @param {number} codepoint
- * @returns {boolean}
- */
 function isLowSurrogate(codepoint) {
   return codepoint >= 0xdc00 && codepoint <= 0xdfff;
 }
 
-/**
- *
- * @param {import("./types").Expression} expr
- * @param {import("./types").FunctionExtensions} functionExtensions
- * @returns {void}
- */
 function throwForNotCompared(expr, functionExtensions) {
   if (isLiteralExpression(expr)) {
     throw new Error("filter expression literals must be compared");
   }
 
   if (expr.kind === "FunctionExtension") {
-    let func = functionExtensions[expr.name];
+    var func = functionExtensions[expr.name];
 
     if (func === undefined) {
-      throw new Error(`unknown function extension ${expr.name}`);
+      throw new Error("unknown function extension " + expr.name);
     }
 
     if (func.returnType === "ValueType") {
-      throw new Error(`result of ${expr.name}() must be compared`);
+      throw new Error("result of " + expr.name + "() must be compared");
     }
   }
 }
 
-/**
- *
- * @param {import("./types").Expression} expr
- * @param {import("./types").FunctionExtensions} functionExtensions
- * @returns {void}
- */
 function throwForNonComparable(expr, functionExtensions) {
   if (isFilterQuery(expr) && !isSingularQuery(expr.query)) {
     throw new Error("non-singular query is not comparable");
   }
 
   if (expr.kind === "FunctionExtension") {
-    let func = functionExtensions[expr.name];
+    var func = functionExtensions[expr.name];
 
     if (func === undefined) {
-      throw new Error(`unknown function extension ${expr.name}`);
+      throw new Error("unknown function extension " + expr.name);
     }
 
     if (func.returnType !== "ValueType") {
-      throw new Error(`result of ${expr.name}() is not comparable`);
+      throw new Error("result of " + expr.name + "() must be compared");
     }
   }
 }
 
-/**
- *
- * @param {Token} token
- * @param {Array<import("./types").Expression>} args
- * @param {import("./types").FunctionExtensions} functionExtensions
- * @return {void}
- */
 function validateFunctionSignature(token, args, functionExtensions) {
-  const func = functionExtensions[token.value];
+  var func = functionExtensions[token.value];
   if (func === undefined) {
-    throw new Error(`unknown function extension ${token.value}`);
+    throw new Error("unknown function extension " + token.value);
   }
 
-  const expectedArgCount = func.argTypes.length;
+  var expectedArgCount = func.argTypes.length;
 
   if (args.length !== expectedArgCount) {
-    throw new Error(
-      `${token.value} takes ${expectedArgCount} argument${expectedArgCount === 1 ? "" : "s"} (${args.length} given)`,
-    );
+    var message = [
+      "",
+      token.value,
+      " takes ",
+      expectedArgCount,
+      " arguments",
+      expectedArgCount === 1 ? " (" : "s (",
+      args.length,
+      " given)"
+    ].join("");
+
+    throw new Error(message);
   }
 
-  for (let i = 0; i < expectedArgCount; i++) {
-    const arg = args[i];
+  for (var i = 0; i < expectedArgCount; i++) {
+    var arg = args[i];
 
     switch (func.argTypes[i]) {
       case "ValueType":
@@ -872,30 +734,30 @@ function validateFunctionSignature(token, args, functionExtensions) {
           !(
             isLiteralExpression(arg) ||
             (isFilterQuery(arg) && isSingularQuery(arg.query)) ||
-            (arg?.kind === "FunctionExtension" &&
-              functionExtensions[arg.name]?.returnType === "ValueType")
+            (arg.kind === "FunctionExtension" &&
+              functionExtensions[arg.name].returnType === "ValueType")
           )
         ) {
           throw new Error(
-            `${token.value}() argument ${i} must be of ValueType`,
+            "" + token.value + "() argument " + i + "must be of ValueType"
           );
         }
         break;
       case "LogicalType":
         if (!(isFilterQuery(arg) || isInfixExpression(arg))) {
           throw new Error(
-            `${token.value}() argument ${i} must be of LogicalType`,
+            "" + token.value + "() argument " + i + "must be of LogicalType"
           );
         }
         break;
       case "NodesType":
         if (
           !isFilterQuery(arg) ||
-          (arg?.kind === "FunctionExtension" &&
-            functionExtensions[arg.name]?.returnType === "NodesType")
+          (arg.kind === "FunctionExtension" &&
+            functionExtensions[arg.name].returnType === "NodesType")
         ) {
           throw new Error(
-            `${token.value}() argument ${i} must be of NodesType`,
+            "" + token.value + "() argument " + i + "must be of NodesType"
           );
         }
         break;
@@ -903,13 +765,8 @@ function validateFunctionSignature(token, args, functionExtensions) {
   }
 }
 
-/**
- *
- * @param {import("./types").Expression|undefined} expr
- * @returns {node is import("./types").LiteralExpression}
- */
 function isLiteralExpression(expr) {
-  switch (expr?.kind) {
+  switch (expr.kind) {
     case "NullLiteral":
     case "BooleanLiteral":
     case "StringLiteral":
@@ -920,13 +777,8 @@ function isLiteralExpression(expr) {
   }
 }
 
-/**
- *
- * @param {import("./types").Expression|undefined} expr
- * @returns {node is import("./types").FilterQuery}
- */
 function isFilterQuery(expr) {
-  switch (expr?.kind) {
+  switch (expr.kind) {
     case "AbsoluteQuery":
     case "RelativeQuery":
       return true;
@@ -935,13 +787,8 @@ function isFilterQuery(expr) {
   }
 }
 
-/**
- *
- * @param {import("./types").Expression|undefined} expr
- * @returns {node is import("./types").InfixExpression}
- */
 function isInfixExpression(expr) {
-  switch (expr?.kind) {
+  switch (expr.kind) {
     case "LogicalAnd":
     case "LogicalOr":
     case "EQ":
@@ -956,16 +803,11 @@ function isInfixExpression(expr) {
   }
 }
 
-/**
- *
- * @param {import("./types").JSONPathQuery} query
- * @returns {boolean}
- */
 function isSingularQuery(query) {
-  let segment;
-  let selector;
+  var segment;
+  var selector;
 
-  for (let i = 0; i < query.segments.length; i++) {
+  for (var i = 0; i < query.segments.length; i++) {
     segment = query.segments[i];
 
     if (!segment) {

@@ -1,29 +1,15 @@
-import { Token, T } from "./token";
+var reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
+var reIndex = /-?\d+/y;
+var reInt = /-?\d+[eE]\+?\d+/y;
+var reName = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
+var reTrivia = /[ \n\r\t]+/y;
 
-const reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
-const reIndex = /-?\d+/y;
-const reInt = /-?\d+[eE]\+?\d+/y;
-const reName = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
-const reTrivia = /[ \n\r\t]+/y;
-
-/**
- *
- * @param {string} input
- * @returns {Array<Token>}
- */
-export function tokenize(input) {
-  /** @type {Array<Token>} */
-  const tokens = [];
-
-  const length = input.length;
+function tokenize(input) {
+  var tokens = [];
+  var length = input.length;
   let pos = 0;
-
-  /** @type {number} */
   let ch = NaN;
-
-  /** @type {string|null} */
   let match = null;
-
   let token;
   let new_pos;
 
@@ -35,111 +21,117 @@ export function tokenize(input) {
 
     switch (ch) {
       case 42: // *
-        tokens.push(new Token(T.ASTERISK, "*", pos));
+        tokens.push({ kind: T.ASTERISK, value: "*", index: pos });
         pos += 1;
         break;
       case 64: // @
-        tokens.push(new Token(T.AT, "@", pos));
+        tokens.push({ kind: T.AT, value: "@", index: pos });
         pos += 1;
         break;
       case 58: // :
-        tokens.push(new Token(T.COLON, ":", pos));
+        tokens.push({ kind: T.COLON, value: ":", index: pos });
         pos += 1;
         break;
       case 44: // ,
-        tokens.push(new Token(T.COMMA, ",", pos));
+        tokens.push({ kind: T.COMMA, value: ",", index: pos });
         pos += 1;
         break;
       case 36: // $
-        tokens.push(new Token(T.DOLLAR, "$", pos));
+        tokens.push({ kind: T.DOLLAR, value: "$", index: pos });
         pos += 1;
         break;
       case 40: // (
-        tokens.push(new Token(T.LEFT_PAREN, "(", pos));
+        tokens.push({ kind: T.LEFT_PAREN, value: "(", index: pos });
         pos += 1;
         break;
       case 91: // [
-        tokens.push(new Token(T.LEFT_BRACKET, "[", pos));
+        tokens.push({ kind: T.LEFT_BRACKET, value: "[", index: pos });
         pos += 1;
         break;
       case 41: // )
-        tokens.push(new Token(T.RIGHT_PAREN, ")", pos));
+        tokens.push({ kind: T.RIGHT_PAREN, value: ")", index: pos });
         pos += 1;
         break;
       case 93: // ]
-        tokens.push(new Token(T.RIGHT_BRACKET, "]", pos));
+        tokens.push({ kind: T.RIGHT_BRACKET, value: "]", index: pos });
         pos += 1;
         break;
       case 63: // ?
-        tokens.push(new Token(T.QUESTION, "?", pos));
+        tokens.push({ kind: T.QUESTION, value: "?", index: pos });
         pos += 1;
         break;
       case 38: // &
         if (input.charCodeAt(pos + 1) == 38) {
-          tokens.push(new Token(T.AND, "&&", pos));
+          tokens.push({ kind: T.AND, value: "&&", index: pos });
           pos += 2;
         } else {
-          tokens.push(
-            new Token(T.ERROR, "unknown token '&', did you mean '&&'?", pos),
-          );
+          tokens.push({
+            kind: T.ERROR,
+            value: "unknown token '&', did you mean '&&'?",
+            index: pos
+          });
           pos += 1;
         }
         break;
       case 124: // |
         if (input.charCodeAt(pos + 1) == 124) {
-          tokens.push(new Token(T.OR, "||", pos));
+          tokens.push({ kind: T.OR, value: "||", index: pos });
           pos += 2;
         } else {
-          tokens.push(
-            new Token(T.ERROR, "unknown token '|', did you mean '||'?", pos),
-          );
+          tokens.push({
+            kind: T.ERROR,
+            value: "unknown token '|', did you mean '||'?",
+            index: pos
+          });
           pos += 1;
         }
         break;
       case 46: // .
         if (input.charCodeAt(pos + 1) == 46) {
-          tokens.push(new Token(T.DOUBLE_DOT, "..", pos));
+          tokens.push({ kind: T.DOUBLE_DOT, value: "..", index: pos });
           pos += 2;
         } else {
-          tokens.push(new Token(T.DOT, ".", pos));
+          tokens.push({ kind: T.DOT, value: ".", index: pos });
           pos += 1;
         }
         break;
       case 61: // =
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(T.EQ, "==", pos));
+          tokens.push({ kind: T.EQ, value: "==", index: pos });
           pos += 2;
         } else {
-          tokens.push(
-            new Token(T.ERROR, "unknown token '=', did you mean '=='?", pos),
-          );
+          tokens.push({
+            kind: T.ERROR,
+            value: "unknown token '=', did you mean '=='?",
+            index: pos
+          });
           pos += 1;
         }
         break;
       case 33: // !
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(T.NE, "!=", pos));
+          tokens.push({ kind: T.NE, value: "!=", index: pos });
           pos += 2;
         } else {
-          tokens.push(new Token(T.NOT, "!", pos));
+          tokens.push({ kind: T.NOT, value: "!", index: pos });
           pos += 1;
         }
         break;
       case 62: // >
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(T.GE, ">=", pos));
+          tokens.push({ kind: T.GE, value: ">=", index: pos });
           pos += 2;
         } else {
-          tokens.push(new Token(T.GT, ">", pos));
+          tokens.push({ kind: T.GT, value: ">", index: pos });
           pos += 1;
         }
         break;
       case 60: // <
         if (input.charCodeAt(pos + 1) == 61) {
-          tokens.push(new Token(T.LE, "<=", pos));
+          tokens.push({ kind: T.LE, value: "<=", index: pos });
           pos += 2;
         } else {
-          tokens.push(new Token(T.LT, "<", pos));
+          tokens.push({ kind: T.LT, value: "<", index: pos });
           pos += 1;
         }
         break;
@@ -158,42 +150,44 @@ export function tokenize(input) {
 
         match = scan(reName, input, pos);
         if (match) {
-          tokens.push(new Token(T.NAME, match, pos));
+          tokens.push({ kind: T.NAME, value: match, index: pos });
           pos += match.length;
           continue;
         }
 
         match = scan(reTrivia, input, pos);
         if (match) {
-          tokens.push(new Token(T.TRIVIA, match, pos));
+          tokens.push({ kind: T.TRIVIA, value: match, index: pos });
           pos += match.length;
           continue;
         }
 
         match = scan(reFloat, input, pos);
         if (match) {
-          tokens.push(new Token(T.FLOAT, match, pos));
+          tokens.push({ kind: T.FLOAT, value: match, index: pos });
           pos += match.length;
           continue;
         }
 
         match = scan(reInt, input, pos);
         if (match) {
-          tokens.push(new Token(T.INTEGER, match, pos));
+          tokens.push({ kind: T.INTEGER, value: match, index: pos });
           pos += match.length;
           continue;
         }
 
         match = scan(reIndex, input, pos);
         if (match) {
-          tokens.push(new Token(T.INDEX, match, pos));
+          tokens.push({ kind: T.INDEX, value: match, index: pos });
           pos += match.length;
           continue;
         }
 
-        tokens.push(
-          new Token(T.ERROR, `unknown token '${String.fromCharCode(ch)}'`, pos),
-        );
+        tokens.push({
+          kind: T.ERROR,
+          value: `unknown token '${String.fromCharCode(ch)}'`,
+          index: pos
+        });
         pos += 1;
     }
   }
@@ -201,28 +195,16 @@ export function tokenize(input) {
   return tokens;
 }
 
-/**
- * @param {RegExp} pattern
- * @param {string} input
- * @param {number} pos
- * @returns {string|null}
- */
 function scan(pattern, input, pos) {
   pattern.lastIndex = pos;
-  const match = pattern.exec(input);
+  var match = pattern.exec(input);
   pattern.lastIndex = 0;
   return match ? match[0] : null;
 }
 
-/**
- *
- * @param {string} input
- * @param {number} pos
- * @return {[Token, number]}
- */
 function scan_single_quoted_string(input, pos) {
-  const start = pos;
-  const length = input.length;
+  var start = pos;
+  var length = input.length;
 
   /** @type {number} */
   let ch = NaN;
@@ -242,9 +224,15 @@ function scan_single_quoted_string(input, pos) {
         kind = T.SINGLE_QUOTED_ESC_STRING;
         break;
       case NaN:
-        return [new Token(T.ERROR, "unclosed string literal", start), length];
+        return [
+          { kind: T.ERROR, value: "unclosed string literal", index: start },
+          length
+        ];
       case 39: // '
-        return [new Token(kind, input.slice(start, pos), start), pos + 1];
+        return [
+          { kind: kind, value: input.slice(start, pos), index: start },
+          pos + 1
+        ];
       default:
         // Might as well do this here while where iterating code points.
         // This does break our T.ERROR token policy though.
@@ -256,18 +244,15 @@ function scan_single_quoted_string(input, pos) {
     }
   }
 
-  return [new Token(T.ERROR, "unclosed string literal", start), length];
+  return [
+    { kind: T.ERROR, value: "unclosed string literal", index: start },
+    length
+  ];
 }
 
-/**
- *
- * @param {string} input
- * @param {number} pos
- * @return {[Token, number]}
- */
 function scan_double_quoted_string(input, pos) {
-  const start = pos;
-  const length = input.length;
+  var start = pos;
+  var length = input.length;
 
   /** @type {number} */
   let ch = NaN;
@@ -287,9 +272,15 @@ function scan_double_quoted_string(input, pos) {
         kind = T.DOUBLE_QUOTED_ESC_STRING;
         break;
       case NaN:
-        return [new Token(T.ERROR, "unclosed string literal", start), length];
+        return [
+          { kind: T.ERROR, value: "unclosed string literal", index: start },
+          length
+        ];
       case 34: // "
-        return [new Token(kind, input.slice(start, pos), start), pos + 1];
+        return [
+          { kind: kind, value: input.slice(start, pos), index: start },
+          pos + 1
+        ];
       default:
         // Might as well do this here while where iterating code points.
         // This does break our T.ERROR token policy though.
@@ -302,5 +293,8 @@ function scan_double_quoted_string(input, pos) {
     }
   }
 
-  return [new Token(T.ERROR, "unclosed string literal", start), length];
+  return [
+    { kind: T.ERROR, value: "unclosed string literal", index: start },
+    length
+  ];
 }
