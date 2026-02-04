@@ -1,4 +1,5 @@
 import { compile, find } from "../src/api";
+import { canonicalPath } from "../src/path";
 import cts from "./cts/cts.json" with { type: "json" };
 
 const TEST_CASES = cts.tests.map((t) => [
@@ -30,13 +31,14 @@ describe("JSONPath Compliance Test Suite", () => {
         expect(() => compile(query)).toThrow(Error);
       } else {
         const nodes = find(query, data);
-
-        // TODO: test normalized paths
+        const paths = nodes.map((n) => canonicalPath(n));
 
         if (result) {
           expect(nodes.map((n) => n.value)).toStrictEqual(result);
+          expect(paths).toStrictEqual(resultPaths);
         } else if (results) {
           expect(results).toContainEqual(nodes.map((n) => n.value));
+          expect(resultsPaths).toContainEqual(paths);
         }
       }
     },

@@ -639,3 +639,31 @@ export const FUNCTION_EXTENSIONS = {
   search: SearchFunctionExtension,
   value: ValueFunctionExtension,
 };
+
+/**
+ *
+ * @param {import("./types").JSONPathNode} node
+ */
+export function canonicalPath(node) {
+  return (
+    "$" +
+    node.location
+      .map(function (key) {
+        if (isString(key)) {
+          return `[${canonicalString(key)}]`;
+        }
+
+        return `[${key}]`;
+      })
+      .join("")
+  );
+}
+
+/**
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+function canonicalString(name) {
+  return `'${JSON.stringify(name).slice(1, -1).replaceAll('\\"', '"').replaceAll("'", "\\'")}'`;
+}
