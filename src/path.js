@@ -1,8 +1,5 @@
 var NOTHING = {};
 
-/** @type {import("./types").FunctionExtensions} */
-const FUNCTION_EXTENSIONS = {};
-
 /**
  *
  * @param {import("./types").JSONPathQuery} query
@@ -238,7 +235,10 @@ function evaluateExpression(expr, context) {
       }
 
       const args = expr.args.map(function (arg, i) {
-        unpackNodeList(evaluateExpression(arg, context), func.argTypes[i]);
+        return unpackNodeList(
+          evaluateExpression(arg, context),
+          func.argTypes[i],
+        );
       });
 
       return func.call(...args);
@@ -512,3 +512,130 @@ function deepEquals(a, b) {
 
   return false;
 }
+
+/** @type {import("./types").FunctionDefinition} */
+export const CountFunctionExtension = {
+  argTypes: ["NodesType"],
+  returnType: "ValueType",
+  call: function (nodeList) {
+    return nodeList.nodes.length;
+  },
+};
+
+/** @type {import("./types").FunctionDefinition} */
+export const LengthFunctionExtension = {
+  argTypes: ["ValueType"],
+  returnType: "ValueType",
+  call: function (value) {
+    if (value === NOTHING) return NOTHING;
+    if (Array.isArray(value) || isString(value)) return value.length;
+    if (isPlainObject(value)) return Object.keys(value).length;
+    return NOTHING;
+  },
+};
+
+/** @type {import("./types").FunctionDefinition} */
+export const MatchFunctionExtension = {
+  argTypes: ["ValueType", "ValueType"],
+  returnType: "LogicalType",
+  call: function (value, pattern) {
+    if (!isString(value) || !isString(pattern)) {
+      return false;
+    }
+
+    try {
+      // TODO: cache
+      const re = new RegExp(fullMatch(pattern), "u");
+      return re.test(value);
+    } catch (error) {
+      return false;
+    }
+  },
+};
+
+/** @type {import("./types").FunctionDefinition} */
+export const SearchFunctionExtension = {
+  argTypes: ["ValueType", "ValueType"],
+  returnType: "LogicalType",
+  call: function (value, pattern) {
+    if (!isString(value) || !isString(pattern)) {
+      return false;
+    }
+
+    try {
+      // TODO: cache
+      const re = new RegExp(mapRegexp(pattern), "u");
+      return !!value.match(re);
+    } catch (error) {
+      return false;
+    }
+  },
+};
+
+/** @type {import("./types").FunctionDefinition} */
+export const ValueFunctionExtension = {
+  argTypes: ["NodesType"],
+  returnType: "ValueType",
+  call: function (nodeList) {
+    if (nodeList.nodes.length === 1) return nodeList.nodes[0].value;
+    return NOTHING;
+  },
+};
+
+function mapRegexp(pattern) {
+  let escaped = false;
+  let charClass = false;
+  const parts = [];
+  for (const ch of pattern) {
+    if (escaped) {
+      parts.push(ch);
+      escaped = false;
+      continue;
+    }
+
+    switch (ch) {
+      case ".":
+        if (!charClass) {
+          parts.push("(?:(?![\r\n])\\P{Cs}|\\p{Cs}\\p{Cs})");
+        } else {
+          parts.push(ch);
+        }
+        break;
+      case "\\":
+        escaped = true;
+        parts.push(ch);
+        break;
+      case "[":
+        charClass = true;
+        parts.push(ch);
+        break;
+      case "]":
+        charClass = false;
+        parts.push(ch);
+        break;
+      default:
+        parts.push(ch);
+        break;
+    }
+  }
+  return parts.join("");
+}
+
+function fullMatch(pattern) {
+  const parts = [];
+  const explicitCaret = pattern.startsWith("^");
+  const explicitDollar = pattern.endsWith("$");
+  if (!explicitCaret && !explicitDollar) parts.push("^(?:");
+  parts.push(mapRegexp(pattern));
+  if (!explicitCaret && !explicitDollar) parts.push(")$");
+  return parts.join("");
+}
+
+/** @type {import("./types").FunctionExtensions} */
+export const FUNCTION_EXTENSIONS = {
+  count: CountFunctionExtension,
+  length: LengthFunctionExtension,
+  match: MatchFunctionExtension,
+  search: SearchFunctionExtension,
+  value: ValueFunctionExtension,
+};

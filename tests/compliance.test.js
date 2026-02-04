@@ -1,7 +1,5 @@
 import { compile, find } from "../src/api";
-import cts from "./cts/tests/filter.json" with { type: "json" };
-
-// XXX: testing individual CTS files for now.
+import cts from "./cts/cts.json" with { type: "json" };
 
 const TEST_CASES = cts.tests.map((t) => [
   t.name,

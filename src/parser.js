@@ -1,4 +1,5 @@
 import { T, Token } from "./token";
+import { FUNCTION_EXTENSIONS } from "./path";
 
 const MAX_INDEX = Math.pow(2, 53) - 1;
 const MIN_INDEX = -Math.pow(2, 53) + 1;
@@ -42,9 +43,6 @@ COMPARISON_OPERATORS[T.GT] = true;
 COMPARISON_OPERATORS[T.LE] = true;
 COMPARISON_OPERATORS[T.LT] = true;
 COMPARISON_OPERATORS[T.NE] = true;
-
-/** @type {import("./types").FunctionExtensions} */
-const FUNCTION_EXTENSIONS = {};
 
 /**
  *
@@ -295,8 +293,7 @@ function parseSliceSelector(state) {
 function parseFilterSelector(state) {
   const token = eat(state, T.QUESTION);
   const expr = parseFilterExpression(state);
-  throwForNonComparable(expr, FUNCTION_EXTENSIONS);
-  throwForNotCompared(expr);
+  throwForNotCompared(expr, FUNCTION_EXTENSIONS);
   return { kind: "FilterSelector", token, expression: expr };
 }
 
@@ -311,6 +308,7 @@ function parseFilterExpression(state, precedence = P.LOWEST) {
   let peeked;
 
   for (;;) {
+    skip(state, T.TRIVIA);
     peeked = peek(state);
     if (
       peeked.kind == T.EOI ||
@@ -334,6 +332,7 @@ function parseFilterExpression(state, precedence = P.LOWEST) {
  */
 function parseFunctionExpression(state) {
   const startToken = eat(state, T.NAME);
+  eat(state, T.LEFT_PAREN);
 
   /** @type {Array<import("./types").Expression>} */
   const args = [];
@@ -342,6 +341,7 @@ function parseFunctionExpression(state) {
 
   while (peek(state).kind != T.RIGHT_PAREN) {
     expr = parsePrimary(state);
+    skip(state, T.TRIVIA);
 
     while (!!BINARY_OPERATORS[peek(state).kind]) {
       expr = parseInfixExpression(state, expr);
@@ -492,8 +492,8 @@ function parseInfixExpression(state, left) {
         throw new Error("expected an infix operator");
     }
   } else {
-    throwForNotCompared(left);
-    throwForNotCompared(right);
+    throwForNotCompared(left, FUNCTION_EXTENSIONS);
+    throwForNotCompared(right, FUNCTION_EXTENSIONS);
 
     switch (token.kind) {
       case T.AND:
@@ -629,7 +629,7 @@ function parseIJsonInt(token) {
 function decodeStringLiteral(token) {
   switch (token.kind) {
     case T.SINGLE_QUOTED_STRING:
-      return token.value.replaceAll('"', '\\"').replaceAll("\\'", "'");
+      return token.value;
     case T.DOUBLE_QUOTED_STRING:
       return token.value;
     case T.SINGLE_QUOTED_ESC_STRING:
@@ -797,11 +797,24 @@ function isLowSurrogate(codepoint) {
 /**
  *
  * @param {import("./types").Expression} expr
+ * @param {import("./types").FunctionExtensions} functionExtensions
  * @returns {void}
  */
-function throwForNotCompared(expr) {
+function throwForNotCompared(expr, functionExtensions) {
   if (isLiteralExpression(expr)) {
-    throw new Error("expression literals must be compared");
+    throw new Error("filter expression literals must be compared");
+  }
+
+  if (expr.kind === "FunctionExtension") {
+    let func = functionExtensions[expr.name];
+
+    if (func === undefined) {
+      throw new Error(`unknown function extension ${expr.name}`);
+    }
+
+    if (func.returnType === "ValueType") {
+      throw new Error(`result of ${expr.name}() must be compared`);
+    }
   }
 }
 
@@ -823,7 +836,7 @@ function throwForNonComparable(expr, functionExtensions) {
       throw new Error(`unknown function extension ${expr.name}`);
     }
 
-    if (func.returnType === "ValueType") {
+    if (func.returnType !== "ValueType") {
       throw new Error(`result of ${expr.name}() is not comparable`);
     }
   }
