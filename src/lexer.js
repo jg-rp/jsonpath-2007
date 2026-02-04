@@ -1,7 +1,7 @@
 import { Token, T } from "./token";
 
 const reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
-const reIndex = /\d+/y;
+const reIndex = /-?\d+/y;
 const reInt = /-?\d+[eE]\+?\d+/y;
 const reName = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
 const reTrivia = /[ \n\r\t]+/y;
@@ -235,6 +235,9 @@ function scan_single_quoted_string(input, pos) {
 
     switch (ch) {
       case 92: // \
+        if (input.charCodeAt(pos + 1) === 34) {
+          throw new Error(`invalid escape sequence '\\"' at ${pos}`);
+        }
         pos += 2;
         kind = T.SINGLE_QUOTED_ESC_STRING;
         break;
@@ -243,6 +246,12 @@ function scan_single_quoted_string(input, pos) {
       case 39: // '
         return [new Token(kind, input.slice(start, pos), start), pos + 1];
       default:
+        // Might as well do this here while where iterating code points.
+        // This does break our T.ERROR token policy though.
+        if (ch <= 0x1f) {
+          // TODO: display ch as hex
+          throw new Error(`invalid character ${ch} at ${pos}`);
+        }
         pos += 1;
     }
   }
@@ -271,6 +280,9 @@ function scan_double_quoted_string(input, pos) {
 
     switch (ch) {
       case 92: // \
+        if (input.charCodeAt(pos + 1) === 39) {
+          throw new Error(`invalid escape sequence '\\\'' at ${pos}`);
+        }
         pos += 2;
         kind = T.DOUBLE_QUOTED_ESC_STRING;
         break;
@@ -279,6 +291,13 @@ function scan_double_quoted_string(input, pos) {
       case 34: // "
         return [new Token(kind, input.slice(start, pos), start), pos + 1];
       default:
+        // Might as well do this here while where iterating code points.
+        // This does break our T.ERROR token policy though.
+        if (ch <= 0x1f) {
+          // TODO: display ch as hex
+          throw new Error(`invalid character ${ch} at ${pos}`);
+        }
+
         pos += 1;
     }
   }

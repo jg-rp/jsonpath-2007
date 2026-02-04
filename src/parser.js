@@ -1,5 +1,8 @@
 import { T, Token } from "./token";
 
+const MAX_INDEX = Math.pow(2, 53) - 1;
+const MIN_INDEX = -Math.pow(2, 53) + 1;
+
 const P = {
   LOWEST: 1,
   LOGICAL_OR: 3,
@@ -385,13 +388,15 @@ function parsePrimary(state) {
         token,
         value: decodeStringLiteral(token),
       };
-    case T.FALSE:
-      return { kind: "BooleanLiteral", token: next(state), value: false };
-    case T.TRUE:
-      return { kind: "BooleanLiteral", token: next(state), value: true };
     case T.NAME:
       if (peeked.value == "null") {
         return { kind: "NullLiteral", token: next(state) };
+      }
+      if (peeked.value == "false") {
+        return { kind: "BooleanLiteral", token: next(state), value: false };
+      }
+      if (peeked.value == "true") {
+        return { kind: "BooleanLiteral", token: next(state), value: true };
       }
       return parseFunctionExpression(state);
     case T.LEFT_PAREN:
@@ -603,7 +608,17 @@ function parseIJsonInt(token) {
     throw new Error(`invalid index '${value}'`);
   }
 
-  return Number(value);
+  const num = Number(value);
+
+  if (isNaN(num)) {
+    throw new Error(`invalid index '${value}'`);
+  }
+
+  if (num < MIN_INDEX || num > MAX_INDEX) {
+    throw new Error("index out of range");
+  }
+
+  return num;
 }
 
 /**
@@ -648,12 +663,13 @@ function unescapeString(value, token) {
     ch = value[index] || "";
 
     if (ch !== "\\") {
-      codePoint = ch.codePointAt(0);
+      codePoint = ch.charCodeAt(0);
       if (codePoint === undefined || codePoint <= 0x1f) {
         throw new Error("invalid character");
       }
 
       result.push(ch);
+      index += 1;
       continue;
     }
 
@@ -693,6 +709,8 @@ function unescapeString(value, token) {
       default:
         throw new Error("unknown escape sequence");
     }
+
+    index += 1;
   }
 
   return result.join("");
@@ -712,10 +730,15 @@ function decodeSlashU(value, index, token) {
     throw new Error("incomplete escape sequence");
   }
 
-  let codePoint = parseInt(value.slice(index, 4), 16);
+  let digits = value.slice(index, index + 4);
+  if (!/^[a-fA-F0-9]{4}$/.test(digits)) {
+    throw new Error("invalid escape sequence");
+  }
+
+  let codePoint = parseInt(digits, 16);
 
   if (isNaN(codePoint)) {
-    throw new Error("invalid escape sequence");
+    throw new Error("unexpected low surrogate");
   }
 
   if (isLowSurrogate(codePoint)) {
@@ -723,11 +746,16 @@ function decodeSlashU(value, index, token) {
   }
 
   if (isHighSurrogate(codePoint)) {
-    if (value.startsWith("\\u", index + 4)) {
+    if (value.startsWith("\\u", index + 6)) {
       throw new Error("invalid escape sequence");
     }
 
-    const lowSurrogate = parseInt(value.slice(index + 6, index + 10), 16);
+    digits = value.slice(index + 6, index + 10);
+    if (!/^[a-fA-F0-9]{4}$/.test(digits)) {
+      throw new Error("invalid escape sequence");
+    }
+
+    const lowSurrogate = parseInt(digits, 16);
 
     if (!isLowSurrogate(lowSurrogate)) {
       throw new Error("invalid escape sequence");
@@ -772,7 +800,7 @@ function isLowSurrogate(codepoint) {
  * @returns {void}
  */
 function throwForNotCompared(expr) {
-  if (!isLiteralExpression(expr)) {
+  if (isLiteralExpression(expr)) {
     throw new Error("expression literals must be compared");
   }
 }

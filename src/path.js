@@ -7,7 +7,7 @@ const FUNCTION_EXTENSIONS = {};
  *
  * @param {import("./types").JSONPathQuery} query
  * @param {unknown} data
- * @returns {import("./types").JSONPathNodeList}
+ * @returns {Array<import("./types").JSONPathNode>}
  */
 export function resolve(query, data) {
   /** @type {Array<import("./types").JSONPathNode>} */
@@ -15,7 +15,7 @@ export function resolve(query, data) {
   for (const segment of query.segments) {
     nodes = resolveSegment(segment, nodes);
   }
-  return { kind: "JSONPathNodeList", nodes };
+  return nodes;
 }
 
 /**
@@ -154,56 +154,82 @@ function evaluateExpression(expr, context) {
       return !isTruthy(evaluateExpression(expr.expression, context));
     case "LogicalAnd":
       left = evaluateExpression(expr.left, context);
-      if (isNodeList(left) && left.nodes.length === 1) {
-        left = left.nodes[0]?.value;
-      }
-
       right = evaluateExpression(expr.right, context);
-      if (isNodeList(right) && right.nodes.length === 1) {
-        right = right.nodes[0]?.value;
-      }
-
       return isTruthy(left) && isTruthy(right);
     case "LogicalOr":
       left = evaluateExpression(expr.left, context);
+      right = evaluateExpression(expr.right, context);
+      return isTruthy(left) || isTruthy(right);
+    case "EQ":
+      left = evaluateExpression(expr.left, context);
       if (isNodeList(left) && left.nodes.length === 1) {
         left = left.nodes[0]?.value;
       }
-
       right = evaluateExpression(expr.right, context);
       if (isNodeList(right) && right.nodes.length === 1) {
         right = right.nodes[0]?.value;
       }
-
-      return isTruthy(left) || isTruthy(right);
-    case "EQ":
-      left = evaluateExpression(expr.left, context);
-      right = evaluateExpression(expr.right, context);
       return eq(left, right);
     case "NE":
       left = evaluateExpression(expr.left, context);
+      if (isNodeList(left) && left.nodes.length === 1) {
+        left = left.nodes[0]?.value;
+      }
       right = evaluateExpression(expr.right, context);
+      if (isNodeList(right) && right.nodes.length === 1) {
+        right = right.nodes[0]?.value;
+      }
       return !eq(left, right);
     case "LT":
       left = evaluateExpression(expr.left, context);
+      if (isNodeList(left) && left.nodes.length === 1) {
+        left = left.nodes[0]?.value;
+      }
       right = evaluateExpression(expr.right, context);
+      if (isNodeList(right) && right.nodes.length === 1) {
+        right = right.nodes[0]?.value;
+      }
       return lt(left, right);
     case "LE":
       left = evaluateExpression(expr.left, context);
+      if (isNodeList(left) && left.nodes.length === 1) {
+        left = left.nodes[0]?.value;
+      }
       right = evaluateExpression(expr.right, context);
+      if (isNodeList(right) && right.nodes.length === 1) {
+        right = right.nodes[0]?.value;
+      }
       return lt(left, right) || eq(left, right);
     case "GT":
       left = evaluateExpression(expr.left, context);
+      if (isNodeList(left) && left.nodes.length === 1) {
+        left = left.nodes[0]?.value;
+      }
       right = evaluateExpression(expr.right, context);
+      if (isNodeList(right) && right.nodes.length === 1) {
+        right = right.nodes[0]?.value;
+      }
       return lt(right, left);
     case "GE":
       left = evaluateExpression(expr.left, context);
+      if (isNodeList(left) && left.nodes.length === 1) {
+        left = left.nodes[0]?.value;
+      }
       right = evaluateExpression(expr.right, context);
+      if (isNodeList(right) && right.nodes.length === 1) {
+        right = right.nodes[0]?.value;
+      }
       return lt(right, left) || eq(left, right);
     case "AbsoluteQuery":
-      return resolve(expr.query, context.root);
+      return {
+        kind: "JSONPathNodeList",
+        nodes: resolve(expr.query, context.root),
+      };
     case "RelativeQuery":
-      return resolve(expr.query, context.value);
+      return {
+        kind: "JSONPathNodeList",
+        nodes: resolve(expr.query, context.value),
+      };
     case "FunctionExtension":
       const func = context.functionExtensions[expr.name];
 
@@ -387,7 +413,7 @@ function isTruthy(value) {
  * @returns {value is import("./types").JSONPathNodeList}
  */
 function isNodeList(value) {
-  return value.kind === "JSONPathNodeList";
+  return value && value.kind === "JSONPathNodeList";
 }
 
 /**

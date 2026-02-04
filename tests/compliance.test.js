@@ -1,0 +1,46 @@
+import { compile, find } from "../src/api";
+import cts from "./cts/tests/filter.json" with { type: "json" };
+
+// XXX: testing individual CTS files for now.
+
+const TEST_CASES = cts.tests.map((t) => [
+  t.name,
+  t.selector,
+  t.document,
+  t.result,
+  t.result_paths,
+  t.results,
+  t.results_paths,
+  t.invalid_selector,
+]);
+
+describe("JSONPath Compliance Test Suite", () => {
+  test.each(TEST_CASES)(
+    "%s",
+    (
+      _,
+      query,
+      data,
+      result,
+      resultPaths,
+      results,
+      resultsPaths,
+      invalidSelector,
+    ) => {
+      if (invalidSelector) {
+        // TODO: custom error and messages
+        expect(() => compile(query)).toThrow(Error);
+      } else {
+        const nodes = find(query, data);
+
+        // TODO: test normalized paths
+
+        if (result) {
+          expect(nodes.map((n) => n.value)).toStrictEqual(result);
+        } else if (results) {
+          expect(results).toContainEqual(nodes.map((n) => n.value));
+        }
+      }
+    },
+  );
+});
