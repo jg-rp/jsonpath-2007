@@ -2,6 +2,7 @@
 var api = {
   find: find,
   compile: compile,
+  resolve: _resolve,
   canonicalPath: canonicalPath,
   version: "0.0.1"
 };
@@ -12,4 +13,9 @@ function find(query, data) {
 
 function compile(query) {
   return parse(tokenize(query));
+}
+
+// XXX:
+function _resolve(query, data) {
+  return resolve(query, data);
 }
