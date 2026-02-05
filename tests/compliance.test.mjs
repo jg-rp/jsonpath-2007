@@ -1,5 +1,4 @@
-import { compile, find } from "../src/api";
-import { canonicalPath } from "../src/path";
+import JSONPath from "../dist/jsonpath.js";
 import cts from "./cts/cts.json" with { type: "json" };
 
 const TEST_CASES = cts.tests.map((t) => [
@@ -10,7 +9,7 @@ const TEST_CASES = cts.tests.map((t) => [
   t.result_paths,
   t.results,
   t.results_paths,
-  t.invalid_selector,
+  t.invalid_selector
 ]);
 
 describe("JSONPath Compliance Test Suite", () => {
@@ -24,14 +23,14 @@ describe("JSONPath Compliance Test Suite", () => {
       resultPaths,
       results,
       resultsPaths,
-      invalidSelector,
+      invalidSelector
     ) => {
       if (invalidSelector) {
         // TODO: custom error and messages
-        expect(() => compile(query)).toThrow(Error);
+        expect(() => JSONPath.compile(query)).toThrow(Error);
       } else {
-        const nodes = find(query, data);
-        const paths = nodes.map((n) => canonicalPath(n));
+        const nodes = JSONPath.find(query, data);
+        const paths = nodes.map((n) => JSONPath.canonicalPath(n));
 
         if (result) {
           expect(nodes.map((n) => n.value)).toStrictEqual(result);
@@ -41,6 +40,6 @@ describe("JSONPath Compliance Test Suite", () => {
           expect(resultsPaths).toContainEqual(paths);
         }
       }
-    },
+    }
   );
 });

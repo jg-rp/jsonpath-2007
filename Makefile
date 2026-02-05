@@ -32,3 +32,10 @@ clean:
 	rm -f $(DIST)
 
 rebuild: clean build
+
+test: rebuild
+	bun test
+
+dev: rebuild
+	bun run dev.mjs
+	

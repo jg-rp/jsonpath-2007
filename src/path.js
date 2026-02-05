@@ -16,14 +16,15 @@ function resolveSegment(segment, nodes) {
   var result = [];
   var selectors = segment.selectors;
   var selLen = selectors.length;
+  var nodesLen = nodes.length;
 
+  // TODO: change this back
   var iNode, iSelector, iNewNode, iDescendant;
-  var nodesLen, descLen, newLen;
+  var descLen, newLen;
   var newNodes, descendantNodes;
 
   switch (segment.kind) {
     case "ChildSegment":
-      nodesLen = nodes.length;
       for (iNode = 0; iNode < nodesLen; iNode++) {
         for (iSelector = 0; iSelector < selLen; iSelector++) {
           newNodes = resolveSelector(selectors[iSelector], nodes[iNode]);
@@ -35,7 +36,6 @@ function resolveSegment(segment, nodes) {
       }
       break;
     case "DescendantSegment":
-      nodesLen = nodes.length;
       for (iNode = 0; iNode < nodesLen; iNode++) {
         descendantNodes = visit(nodes[iNode], 1);
         descLen = descendantNodes.length;
@@ -82,7 +82,7 @@ function resolveSelector(selector, node) {
       if (Array.isArray(node.value)) {
         var sliced = slice(node.value, selector);
         for (var i = 0, slicedLen = sliced.length; i < slicedLen; i++) {
-          result.push(newChild(node, sliced[1], sliced[0]));
+          result.push(newChild(node, sliced[i][1], sliced[i][0]));
         }
       }
       break;
@@ -245,7 +245,7 @@ function evaluateExpression(expr, context) {
         );
       });
 
-      return func.apply(null, args);
+      return func.call.apply(null, args);
     default:
       break;
   }

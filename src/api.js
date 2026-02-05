@@ -1,7 +1,15 @@
-export function find(query, data) {
+// TODO: function extensions and types
+var api = {
+  find: find,
+  compile: compile,
+  canonicalPath: canonicalPath,
+  version: "0.0.1"
+};
+
+function find(query, data) {
   return resolve(compile(query), data);
 }
 
-export function compile(query) {
+function compile(query) {
   return parse(tokenize(query));
 }

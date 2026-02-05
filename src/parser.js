@@ -9,7 +9,6 @@ var P = {
   PREFIX: 7
 };
 
-/** @type {Array<number>} */
 var PRECEDENCES = [];
 PRECEDENCES[T.AND] = P.LOGICAL_AND;
 PRECEDENCES[T.OR] = P.LOGICAL_OR;
@@ -21,7 +20,6 @@ PRECEDENCES[T.LE] = P.RELATIONAL;
 PRECEDENCES[T.LT] = P.RELATIONAL;
 PRECEDENCES[T.NE] = P.RELATIONAL;
 
-/** @type {Array<boolean>} */
 var BINARY_OPERATORS = [];
 BINARY_OPERATORS[T.AND] = true;
 BINARY_OPERATORS[T.OR] = true;
@@ -32,7 +30,6 @@ BINARY_OPERATORS[T.LE] = true;
 BINARY_OPERATORS[T.LT] = true;
 BINARY_OPERATORS[T.NE] = true;
 
-/** @type {Array<boolean>} */
 var COMPARISON_OPERATORS = [];
 COMPARISON_OPERATORS[T.EQ] = true;
 COMPARISON_OPERATORS[T.GE] = true;
@@ -40,6 +37,8 @@ COMPARISON_OPERATORS[T.GT] = true;
 COMPARISON_OPERATORS[T.LE] = true;
 COMPARISON_OPERATORS[T.LT] = true;
 COMPARISON_OPERATORS[T.NE] = true;
+
+var EOI = { kind: T.EOI, value: "", index: -1 };
 
 function parse(tokens) {
   var state = { tokens: tokens, pos: 0 };
@@ -323,7 +322,7 @@ function parseFunctionExpression(state) {
     kind: "FunctionExtension",
     token: startToken,
     name: startToken.value,
-    arg: args
+    args: args
   };
 }
 
@@ -476,17 +475,17 @@ function parseRelativeQuery(state) {
 
 function next(state) {
   if (state.pos < state.tokens.length) {
-    return state.tokens[state.pos++] || new Token(T.EOI, "", -1);
+    return state.tokens[state.pos++] || EOI;
   }
-  return new Token(T.EOI, "", -1);
+  return EOI;
 }
 
 function peek(state) {
-  return state.tokens[state.pos] || new Token(T.EOI, "", -1);
+  return state.tokens[state.pos] || EOI;
 }
 
 function eat(state, kind) {
-  var token = state.tokens[state.pos++] || new Token(T.EOI, "", -1);
+  var token = state.tokens[state.pos++] || EOI;
   if (token.kind !== kind) {
     var message = "expected " + kind + ", found " + token.kind;
     throw new Error(message);
