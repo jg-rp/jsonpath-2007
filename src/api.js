@@ -4,7 +4,9 @@ var api = {
   compile: compile,
   resolve: _resolve,
   canonicalPath: canonicalPath,
-  version: "0.0.1"
+  version: "0.0.1",
+  JSONPathError: JSONPathError,
+  JSONPathSyntaxError: JSONPathSyntaxError
 };
 
 function find(query, data) {
@@ -12,7 +14,7 @@ function find(query, data) {
 }
 
 function compile(query) {
-  return parse(tokenize(query));
+  return parse(tokenize(query), query);
 }
 
 // XXX:

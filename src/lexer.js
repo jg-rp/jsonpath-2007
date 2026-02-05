@@ -1,8 +1,8 @@
-var RE_FLOAT = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
-var RE_INDEX = /-?\d+/y;
-var RE_INT = /-?\d+[eE]\+?\d+/y;
-var RE_NAME = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
-var RE_TRIVIA = /[ \n\r\t]+/y;
+var RE_FLOAT = /^((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/;
+var RE_INDEX = /^-?\d+/;
+var RE_INT = /^-?\d+[eE]\+?\d+/;
+var RE_NAME = /^[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/;
+var RE_TRIVIA = /^[ \n\r\t]+/;
 
 function tokenize(input) {
   var tokens = [];
@@ -65,12 +65,11 @@ function tokenize(input) {
           tokens.push({ kind: T.AND, value: "&&", index: pos });
           pos += 2;
         } else {
-          tokens.push({
-            kind: T.ERROR,
-            value: "unknown token '&', did you mean '&&'?",
-            index: pos
-          });
-          pos += 1;
+          throw new JSONPathSyntaxError(
+            "unknown token '&', did you mean '&&'?",
+            { kind: T.ERROR, value: "", index: pos },
+            input
+          );
         }
         break;
       case 124: // |
@@ -78,12 +77,11 @@ function tokenize(input) {
           tokens.push({ kind: T.OR, value: "||", index: pos });
           pos += 2;
         } else {
-          tokens.push({
-            kind: T.ERROR,
-            value: "unknown token '|', did you mean '||'?",
-            index: pos
-          });
-          pos += 1;
+          throw new JSONPathSyntaxError(
+            "unknown token '|', did you mean '||'?",
+            { kind: T.ERROR, value: "", index: pos },
+            input
+          );
         }
         break;
       case 46: // .
@@ -100,12 +98,11 @@ function tokenize(input) {
           tokens.push({ kind: T.EQ, value: "==", index: pos });
           pos += 2;
         } else {
-          tokens.push({
-            kind: T.ERROR,
-            value: "unknown token '=', did you mean '=='?",
-            index: pos
-          });
-          pos += 1;
+          throw new JSONPathSyntaxError(
+            "unknown token '=', did you mean '=='?",
+            { kind: T.ERROR, value: "", index: pos },
+            input
+          );
         }
         break;
       case 33: // !
@@ -187,12 +184,11 @@ function tokenize(input) {
           }
         }
 
-        tokens.push({
-          kind: T.ERROR,
-          value: "unknown token '" + String.fromCharCode(ch) + "'",
-          index: pos
-        });
-        pos += 1;
+        throw new JSONPathSyntaxError(
+          "unknown token '" + String.fromCharCode(ch) + "'",
+          { kind: T.ERROR, value: "", index: pos },
+          input
+        );
     }
   }
 
@@ -200,20 +196,14 @@ function tokenize(input) {
 }
 
 function scan(pattern, input, pos) {
-  pattern.lastIndex = pos;
-  var match = pattern.exec(input);
-  pattern.lastIndex = 0;
+  var match = pattern.exec(input.slice(pos));
   return match ? match[0] : null;
 }
 
 function scanSingleQuotedString(input, pos) {
   var start = pos;
   var length = input.length;
-
-  /** @type {number} */
   var ch = NaN;
-
-  /** @type {import("./token").TokenKind} */
   var kind = T.SINGLE_QUOTED_STRING;
 
   while (pos < length) {
@@ -222,46 +212,65 @@ function scanSingleQuotedString(input, pos) {
     switch (ch) {
       case 92: // \
         if (input.charCodeAt(pos + 1) === 34) {
-          throw new Error("invalid escape sequence '\\\"' at " + pos);
+          throw new JSONPathSyntaxError(
+            "invalid escape sequence '\\\"'",
+            {
+              kind: T.ERROR,
+              value: "",
+              index: pos
+            },
+            input
+          );
         }
         pos += 2;
         kind = T.SINGLE_QUOTED_ESC_STRING;
         break;
       case NaN:
-        return [
-          { kind: T.ERROR, value: "unclosed string literal", index: start },
-          length
-        ];
+        throw new JSONPathSyntaxError(
+          "unclosed string literal",
+          {
+            kind: T.ERROR,
+            value: "",
+            index: start
+          },
+          input
+        );
       case 39: // '
         return [
           { kind: kind, value: input.slice(start, pos), index: start },
           pos + 1
         ];
       default:
-        // Might as well do this here while where iterating code points.
-        // This does break our T.ERROR token policy though.
         if (ch <= 0x1f) {
-          // TODO: display ch as hex
-          throw new Error("invalid character " + ch + " at " + pos);
+          throw new JSONPathSyntaxError(
+            "invalid character 0x" + ch.toString(16),
+            {
+              kind: T.ERROR,
+              value: "",
+              index: pos
+            },
+            input
+          );
         }
         pos += 1;
     }
   }
 
-  return [
-    { kind: T.ERROR, value: "unclosed string literal", index: start },
-    length
-  ];
+  throw new JSONPathSyntaxError(
+    "unclosed string literal",
+    {
+      kind: T.ERROR,
+      value: "",
+      index: start
+    },
+    input
+  );
 }
 
 function scanDoubleQuotedString(input, pos) {
   var start = pos;
   var length = input.length;
-
-  /** @type {number} */
   var ch = NaN;
-
-  /** @type {import("./token").TokenKind} */
   var kind = T.DOUBLE_QUOTED_STRING;
 
   while (pos < length) {
@@ -270,37 +279,60 @@ function scanDoubleQuotedString(input, pos) {
     switch (ch) {
       case 92: // \
         if (input.charCodeAt(pos + 1) === 39) {
-          throw new Error("invalid escape sequence '\\\'' at " + pos);
+          throw new JSONPathSyntaxError(
+            "invalid escape sequence '\\\''",
+            {
+              kind: T.ERROR,
+              value: "",
+              index: pos
+            },
+            input
+          );
         }
         pos += 2;
         kind = T.DOUBLE_QUOTED_ESC_STRING;
         break;
       case NaN:
-        return [
-          { kind: T.ERROR, value: "unclosed string literal", index: start },
-          length
-        ];
+        throw new JSONPathSyntaxError(
+          "unclosed string literal",
+          {
+            kind: T.ERROR,
+            value: "",
+            index: start
+          },
+          input
+        );
       case 34: // "
         return [
           { kind: kind, value: input.slice(start, pos), index: start },
           pos + 1
         ];
       default:
-        // Might as well do this here while where iterating code points.
-        // This does break our T.ERROR token policy though.
         if (ch <= 0x1f) {
-          // TODO: display ch as hex
-          throw new Error("invalid character " + ch + " at " + pos);
+          throw new JSONPathSyntaxError(
+            "invalid character 0x" + ch.toString(16),
+            {
+              kind: T.ERROR,
+              value: "",
+              index: pos
+            },
+            input
+          );
         }
 
         pos += 1;
     }
   }
 
-  return [
-    { kind: T.ERROR, value: "unclosed string literal", index: start },
-    length
-  ];
+  throw new JSONPathSyntaxError(
+    "unclosed string literal",
+    {
+      kind: T.ERROR,
+      value: "",
+      index: start
+    },
+    input
+  );
 }
 
 function isNumberCh(ch) {

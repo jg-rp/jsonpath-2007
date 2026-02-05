@@ -38,3 +38,9 @@ var T = {
   TRIVIA: 37,
   WORD: 38
 };
+
+var REVERSE_T = {};
+
+for (var key in T) {
+  REVERSE_T[T[key]] = key;
+}

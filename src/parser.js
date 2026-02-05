@@ -40,8 +40,8 @@ COMPARISON_OPERATORS[T.NE] = true;
 
 var EOI = { kind: T.EOI, value: "", index: -1 };
 
-function parse(tokens) {
-  var state = { tokens: tokens, pos: 0 };
+function parse(tokens, query) {
+  var state = { tokens: tokens, pos: 0, query: query };
   eat(state, T.DOLLAR);
   var segments = parseSegments(state);
   eat(state, T.EOI);
@@ -58,7 +58,7 @@ function parseSegments(state) {
       case T.TRIVIA:
         state.pos += 1;
         if (peek(state).kind === T.EOI) {
-          throw new Error("unexpected trailing whitespace");
+          throw new JSONPathSyntaxError("unexpected trailing whitespace");
         }
         break;
       case T.DOUBLE_DOT:
@@ -104,8 +104,11 @@ function parseDescendantSelectors(state) {
     case T.LEFT_BRACKET:
       return parseBracketedSelectors(state);
     default:
-      var message = "expected a selector, found " + peek(state);
-      throw new Error(message);
+      throw new JSONPathSyntaxError(
+        "expected a selector",
+        peek(state),
+        state.query
+      );
   }
 }
 
@@ -120,8 +123,11 @@ function parseShorthandSelector(state) {
       token = next(state);
       return { kind: "WildcardSelector", token: token };
     default:
-      var message = "expected a shorthand selector, found " + peek(state);
-      throw new Error(message);
+      throw new JSONPathSyntaxError(
+        "expected a shorthand selector",
+        peek(state),
+        state.query
+      );
   }
 }
 
@@ -147,7 +153,7 @@ function parseBracketedSelectors(state) {
         selectors.push({
           kind: "NameSelector",
           token: token,
-          name: decodeStringLiteral(token)
+          name: decodeStringLiteral(state, token)
         });
         break;
       case T.COLON:
@@ -160,24 +166,35 @@ function parseBracketedSelectors(state) {
         selectors.push(parseFilterSelector(state));
         break;
       case T.EOI:
-        throw new Error("unexpected end of query");
+        throw new JSONPathSyntaxError("unexpected end of query");
       default:
-        var message = "unexpected " + token + "in bracketed selection";
-        throw new Error(message);
+        throw new JSONPathSyntaxError(
+          "unexpected token",
+          peek(state),
+          state.query
+        );
     }
 
     skip(state, T.TRIVIA);
 
     switch (peek(state).kind) {
       case T.EOI:
-        throw new Error("unexpected end of selector list");
+        throw new JSONPathSyntaxError(
+          "unexpected end of query",
+          peek(state),
+          state.query
+        );
       case T.RIGHT_BRACKET:
         break loop;
       default:
         skip(state, T.TRIVIA);
         eat(state, T.COMMA);
         if (peek(state).kind === T.RIGHT_BRACKET) {
-          throw new Error("unexpected trailing comma");
+          throw new JSONPathSyntaxError(
+            "unexpected trailing comma",
+            peek(state),
+            state.query
+          );
         }
         break;
     }
@@ -187,7 +204,11 @@ function parseBracketedSelectors(state) {
   eat(state, T.RIGHT_BRACKET);
 
   if (selectors.length === 0) {
-    throw new Error("unexpected empty segment");
+    throw new JSONPathSyntaxError(
+      "unexpected empty segment",
+      startToken,
+      state.query
+    );
   }
 
   return selectors;
@@ -195,7 +216,7 @@ function parseBracketedSelectors(state) {
 
 function parseIndexOrSlice(state) {
   var token = eat(state, T.INDEX);
-  var index = parseIJsonInt(token);
+  var index = parseIJsonInt(state, token);
 
   skip(state, T.TRIVIA);
 
@@ -210,7 +231,7 @@ function parseIndexOrSlice(state) {
   skip(state, T.TRIVIA);
 
   if (peek(state).kind === T.INDEX) {
-    stop = parseIJsonInt(next(state));
+    stop = parseIJsonInt(state, next(state));
     skip(state, T.TRIVIA);
   }
 
@@ -219,7 +240,7 @@ function parseIndexOrSlice(state) {
     skip(state, T.TRIVIA);
 
     if (peek(state).kind === T.INDEX) {
-      step = parseIJsonInt(next(state));
+      step = parseIJsonInt(state, next(state));
     }
   }
 
@@ -240,7 +261,7 @@ function parseSliceSelector(state) {
   var step = undefined;
 
   if (peek(state).kind === T.INDEX) {
-    stop = parseIJsonInt(next(state));
+    stop = parseIJsonInt(state, next(state));
     skip(state, T.TRIVIA);
   }
 
@@ -249,7 +270,7 @@ function parseSliceSelector(state) {
     skip(state, T.TRIVIA);
 
     if (peek(state).kind === T.INDEX) {
-      step = parseIJsonInt(next(state));
+      step = parseIJsonInt(state, next(state));
     }
   }
 
@@ -265,7 +286,7 @@ function parseSliceSelector(state) {
 function parseFilterSelector(state) {
   var token = eat(state, T.QUESTION);
   var expr = parseFilterExpression(state, P.LOWEST);
-  throwForNotCompared(expr, FUNCTION_EXTENSIONS);
+  throwForNotCompared(state, expr, FUNCTION_EXTENSIONS);
   return { kind: "FilterSelector", token: token, expression: expr };
 }
 
@@ -316,7 +337,7 @@ function parseFunctionExpression(state) {
 
   skip(state, T.TRIVIA);
   eat(state, T.RIGHT_PAREN);
-  validateFunctionSignature(startToken, args, FUNCTION_EXTENSIONS);
+  validateFunctionSignature(state, startToken, args, FUNCTION_EXTENSIONS);
 
   return {
     kind: "FunctionExtension",
@@ -340,7 +361,7 @@ function parsePrimary(state) {
       return {
         kind: "StringLiteral",
         token: token,
-        value: decodeStringLiteral(token)
+        value: decodeStringLiteral(state, token)
       };
     case T.NAME:
       if (peeked.value == "null") {
@@ -367,7 +388,7 @@ function parsePrimary(state) {
       return parsePrefixExpression(state);
     default:
       token = next(state);
-      throw new Error("unexpected " + token.value);
+      throw new JSONPathSyntaxError("unexpected token", token, state.query);
   }
 }
 
@@ -384,7 +405,11 @@ function parseGroupedExpression(state) {
     }
 
     if (peeked.kind === T.EOI) {
-      throw new Error("unbalanced parentheses");
+      throw new JSONPathSyntaxError(
+        "unbalanced parentheses",
+        peeked,
+        state.query
+      );
     }
 
     expr = parseInfixExpression(state, expr);
@@ -410,8 +435,8 @@ function parseInfixExpression(state, left) {
   var right = parseFilterExpression(state, precedence);
 
   if (COMPARISON_OPERATORS[token.kind]) {
-    throwForNonComparable(left, FUNCTION_EXTENSIONS);
-    throwForNonComparable(right, FUNCTION_EXTENSIONS);
+    throwForNonComparable(state, left, FUNCTION_EXTENSIONS);
+    throwForNonComparable(state, right, FUNCTION_EXTENSIONS);
 
     switch (token.kind) {
       case T.EQ:
@@ -427,11 +452,15 @@ function parseInfixExpression(state, left) {
       case T.GE:
         return { kind: "GE", token: token, left: left, right: right };
       default:
-        throw new Error("expected an infix operator");
+        throw new JSONPathSyntaxError(
+          "expected an infix operator",
+          token,
+          state.query
+        );
     }
   } else {
-    throwForNotCompared(left, FUNCTION_EXTENSIONS);
-    throwForNotCompared(right, FUNCTION_EXTENSIONS);
+    throwForNotCompared(state, left, FUNCTION_EXTENSIONS);
+    throwForNotCompared(state, right, FUNCTION_EXTENSIONS);
 
     switch (token.kind) {
       case T.AND:
@@ -439,7 +468,11 @@ function parseInfixExpression(state, left) {
       case T.OR:
         return { kind: "LogicalOr", token: token, left: left, right: right };
       default:
-        throw new Error("expected an infix operator");
+        throw new JSONPathSyntaxError(
+          "expected an infix operator",
+          token,
+          state.query
+        );
     }
   }
 }
@@ -449,13 +482,21 @@ function parseNumberLiteral(state) {
   var value = token.value;
 
   if (value.startsWith("0") && value.length > 1) {
-    throw new Error("invalid integer literal");
+    throw new JSONPathSyntaxError(
+      "invalid integer literal",
+      token,
+      state.query
+    );
   }
 
   var num = Number(value);
 
   if (isNaN(num)) {
-    throw new Error("invalid integer literal");
+    throw new JSONPathSyntaxError(
+      "invalid integer literal",
+      token,
+      state.query
+    );
   }
 
   return { kind: "NumberLiteral", token: token, value: num };
@@ -487,8 +528,9 @@ function peek(state) {
 function eat(state, kind) {
   var token = state.tokens[state.pos++] || EOI;
   if (token.kind !== kind) {
-    var message = "expected " + kind + ", found " + token.kind;
-    throw new Error(message);
+    var message =
+      "expected " + REVERSE_T[kind] + ", found " + REVERSE_T[token.kind];
+    throw new JSONPathSyntaxError(message, token, state.query);
   }
   return token;
 }
@@ -499,27 +541,35 @@ function skip(state, kind) {
   }
 }
 
-function parseIJsonInt(token) {
+function parseIJsonInt(state, token) {
   var value = token.value;
 
   if (value.length > 1 && (value.startsWith("0") || value.startsWith("-0"))) {
-    throw new Error("invalid index '" + value + "'");
+    throw new JSONPathSyntaxError(
+      "invalid index '" + value + "'",
+      token,
+      state.query
+    );
   }
 
   var num = Number(value);
 
   if (isNaN(num)) {
-    throw new Error("invalid index '" + value + "'");
+    throw new JSONPathSyntaxError(
+      "invalid index '" + value + "'",
+      token,
+      state.query
+    );
   }
 
   if (num < MIN_INDEX || num > MAX_INDEX) {
-    throw new Error("index out of range");
+    throw new JSONPathSyntaxError("index out of range", token, state.query);
   }
 
   return num;
 }
 
-function decodeStringLiteral(token) {
+function decodeStringLiteral(state, token) {
   switch (token.kind) {
     case T.SINGLE_QUOTED_STRING:
       return token.value;
@@ -527,17 +577,22 @@ function decodeStringLiteral(token) {
       return token.value;
     case T.SINGLE_QUOTED_ESC_STRING:
       return unescapeString(
+        state,
         token.value.replaceAll('"', '\\"').replaceAll("\\'", "'"),
         token
       );
     case T.DOUBLE_QUOTED_ESC_STRING:
-      return unescapeString(token.value, token);
+      return unescapeString(state, token.value, token);
     default:
-      throw new Error("expected a string literal, found " + token);
+      throw new JSONPathSyntaxError(
+        "expected a string literal",
+        token,
+        state.query
+      );
   }
 }
 
-function unescapeString(value, token) {
+function unescapeString(state, value, token) {
   var result = [];
   var length = value.length;
 
@@ -552,7 +607,7 @@ function unescapeString(value, token) {
     if (ch !== "\\") {
       codePoint = ch.charCodeAt(0);
       if (codePoint === undefined || codePoint <= 0x1f) {
-        throw new Error("invalid character");
+        throw new JSONPathSyntaxError("invalid character", token, state.query);
       }
 
       result.push(ch);
@@ -590,12 +645,16 @@ function unescapeString(value, token) {
         break;
       case "u":
         index += 1;
-        chAndIndex = decodeSlashU(value, index, token);
+        chAndIndex = decodeSlashU(state, value, index, token);
         result.push(chAndIndex[0]);
         index = chAndIndex[1];
         break;
       default:
-        throw new Error("unknown escape sequence");
+        throw new JSONPathSyntaxError(
+          "unknown escape sequence",
+          token,
+          state.query
+        );
     }
 
     index += 1;
@@ -604,42 +663,70 @@ function unescapeString(value, token) {
   return result.join("");
 }
 
-function decodeSlashU(value, index, token) {
+function decodeSlashU(state, value, index, token) {
   var length = value.length;
 
   if (index + 3 >= length) {
-    throw new Error("incomplete escape sequence");
+    throw new JSONPathSyntaxError(
+      "incomplete escape sequence",
+      token,
+      state.query
+    );
   }
 
   var digits = value.slice(index, index + 4);
   if (!/^[a-fA-F0-9]{4}$/.test(digits)) {
-    throw new Error("invalid escape sequence");
+    throw new JSONPathSyntaxError(
+      "invalid escape sequence",
+      token,
+      state.query
+    );
   }
 
   var codePoint = parseInt(digits, 16);
 
   if (isNaN(codePoint)) {
-    throw new Error("unexpected low surrogate");
+    throw new JSONPathSyntaxError(
+      "unexpected low surrogate",
+      token,
+      state.query
+    );
   }
 
   if (isLowSurrogate(codePoint)) {
-    throw new Error("invalid escape sequence");
+    throw new JSONPathSyntaxError(
+      "invalid escape sequence",
+      token,
+      state.query
+    );
   }
 
   if (isHighSurrogate(codePoint)) {
     if (value.startsWith("\\u", index + 6)) {
-      throw new Error("invalid escape sequence");
+      throw new JSONPathSyntaxError(
+        "invalid escape sequence",
+        token,
+        state.query
+      );
     }
 
     digits = value.slice(index + 6, index + 10);
     if (!/^[a-fA-F0-9]{4}$/.test(digits)) {
-      throw new Error("invalid escape sequence");
+      throw new JSONPathSyntaxError(
+        "invalid escape sequence",
+        token,
+        state.query
+      );
     }
 
     var lowSurrogate = parseInt(digits, 16);
 
     if (!isLowSurrogate(lowSurrogate)) {
-      throw new Error("invalid escape sequence");
+      throw new JSONPathSyntaxError(
+        "invalid escape sequence",
+        token,
+        state.query
+      );
     }
 
     codePoint =
@@ -651,7 +738,11 @@ function decodeSlashU(value, index, token) {
   }
 
   if (isNaN(codePoint) || codePoint <= 0x1f) {
-    throw new Error("invalid escape sequence");
+    throw new JSONPathSyntaxError(
+      "invalid escape sequence",
+      token,
+      state.query
+    );
   }
 
   return [String.fromCodePoint(codePoint), index];
@@ -665,46 +756,74 @@ function isLowSurrogate(codepoint) {
   return codepoint >= 0xdc00 && codepoint <= 0xdfff;
 }
 
-function throwForNotCompared(expr, functionExtensions) {
+function throwForNotCompared(state, expr, functionExtensions) {
   if (isLiteralExpression(expr)) {
-    throw new Error("filter expression literals must be compared");
+    throw new JSONPathSyntaxError(
+      "filter expression literals must be compared",
+      expr.token,
+      state.query
+    );
   }
 
   if (expr.kind === "FunctionExtension") {
     var func = functionExtensions[expr.name];
 
     if (func === undefined) {
-      throw new Error("unknown function extension " + expr.name);
+      throw new JSONPathSyntaxError(
+        "unknown function extension " + expr.name,
+        expr.token,
+        state.query
+      );
     }
 
     if (func.returnType === "ValueType") {
-      throw new Error("result of " + expr.name + "() must be compared");
+      throw new JSONPathSyntaxError(
+        "result of " + expr.name + "() must be compared",
+        expr.token,
+        state.query
+      );
     }
   }
 }
 
-function throwForNonComparable(expr, functionExtensions) {
+function throwForNonComparable(state, expr, functionExtensions) {
   if (isFilterQuery(expr) && !isSingularQuery(expr.query)) {
-    throw new Error("non-singular query is not comparable");
+    throw new JSONPathSyntaxError(
+      "non-singular query is not comparable",
+      expr.token,
+      state.query
+    );
   }
 
   if (expr.kind === "FunctionExtension") {
     var func = functionExtensions[expr.name];
 
     if (func === undefined) {
-      throw new Error("unknown function extension " + expr.name);
+      throw new JSONPathSyntaxError(
+        "unknown function extension " + expr.name,
+        expr.token,
+        state.query
+      );
     }
 
     if (func.returnType !== "ValueType") {
-      throw new Error("result of " + expr.name + "() must be compared");
+      throw new JSONPathSyntaxError(
+        "result of " + expr.name + "() must be compared",
+        expr.token,
+        state.query
+      );
     }
   }
 }
 
-function validateFunctionSignature(token, args, functionExtensions) {
+function validateFunctionSignature(state, token, args, functionExtensions) {
   var func = functionExtensions[token.value];
   if (func === undefined) {
-    throw new Error("unknown function extension " + token.value);
+    throw new JSONPathSyntaxError(
+      "unknown function extension " + token.value,
+      token,
+      state.query
+    );
   }
 
   var expectedArgCount = func.argTypes.length;
@@ -721,7 +840,7 @@ function validateFunctionSignature(token, args, functionExtensions) {
       " given)"
     ].join("");
 
-    throw new Error(message);
+    throw new JSONPathSyntaxError(message, token, state.query);
   }
 
   for (var i = 0; i < expectedArgCount; i++) {
@@ -737,15 +856,19 @@ function validateFunctionSignature(token, args, functionExtensions) {
               functionExtensions[arg.name].returnType === "ValueType")
           )
         ) {
-          throw new Error(
-            "" + token.value + "() argument " + i + "must be of ValueType"
+          throw new JSONPathSyntaxError(
+            "" + token.value + "() argument " + i + "must be of ValueType",
+            token,
+            state.query
           );
         }
         break;
       case "LogicalType":
         if (!(isFilterQuery(arg) || isInfixExpression(arg))) {
-          throw new Error(
-            "" + token.value + "() argument " + i + "must be of LogicalType"
+          throw new JSONPathSyntaxError(
+            "" + token.value + "() argument " + i + "must be of LogicalType",
+            token,
+            state.query
           );
         }
         break;
@@ -755,8 +878,10 @@ function validateFunctionSignature(token, args, functionExtensions) {
           (arg.kind === "FunctionExtension" &&
             functionExtensions[arg.name].returnType === "NodesType")
         ) {
-          throw new Error(
-            "" + token.value + "() argument " + i + "must be of NodesType"
+          throw new JSONPathSyntaxError(
+            "" + token.value + "() argument " + i + "must be of NodesType",
+            token,
+            state.query
           );
         }
         break;

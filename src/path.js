@@ -134,7 +134,7 @@ function resolveSelector(selector, node) {
       }
       break;
     default:
-      throw new Error("unexpected selector " + selector);
+      throw new JSONPathError("unexpected selector " + selector);
   }
 
   return result;
@@ -235,7 +235,9 @@ function evaluateExpression(expr, context) {
       var func = context.functionExtensions[expr.name];
 
       if (!func) {
-        throw new Error("filter function '" + expr.name + "' is undefined");
+        throw new JSONPathError(
+          "filter function '" + expr.name + "' is undefined"
+        );
       }
 
       var args = expr.args.map(function (arg, i) {
