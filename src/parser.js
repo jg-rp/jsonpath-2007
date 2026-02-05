@@ -807,7 +807,7 @@ function isSingularQuery(query) {
   var segment;
   var selector;
 
-  for (var i = 0; i < query.segments.length; i++) {
+  for (var i = 0, len = query.segments.length; i < len; i++) {
     segment = query.segments[i];
 
     if (!segment) {

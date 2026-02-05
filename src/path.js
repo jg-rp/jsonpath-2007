@@ -1,7 +1,10 @@
 var NOTHING = {};
 
+// TODO: "cache" array length in loop init
+// TODO: "cache" node.value to avoid repeated resolve
+// TODO: use `hasOwnProperty` guard on all `for ... in`
+
 function resolve(query, data) {
-  /** @type {Array<import("./types").JSONPathNode>} */
   var nodes = [{ value: data, location: [], root: data }];
   for (var segment in query.segments) {
     nodes = resolveSegment(query.segments[segment], nodes);
@@ -11,26 +14,41 @@ function resolve(query, data) {
 
 function resolveSegment(segment, nodes) {
   var result = [];
+  var selectors = segment.selectors;
+  var selLen = selectors.length;
+
+  var iNode, iSelector, iNewNode, iDescendant;
+  var nodesLen, descLen, newLen;
+  var newNodes, descendantNodes;
 
   switch (segment.kind) {
     case "ChildSegment":
-      for (var node in nodes) {
-        for (var selector in segment.selectors) {
-          for (_node in resolveSelector(
-            segment.selectors[selector],
-            nodes[node]
-          )) {
-            result.push(_node);
+      nodesLen = nodes.length;
+      for (iNode = 0; iNode < nodesLen; iNode++) {
+        for (iSelector = 0; iSelector < selLen; iSelector++) {
+          newNodes = resolveSelector(selectors[iSelector], nodes[iNode]);
+          newLen = newNodes.length;
+          for (iNewNode = 0; iNewNode < newLen; iNewNode++) {
+            result.push(newNodes[iNewNode]);
           }
         }
       }
       break;
     case "DescendantSegment":
-      for (var node in nodes) {
-        // XXX
-        for (var _node in visit(nodes[node])) {
-          for (var selector in segment.selectors) {
-            result.push(...resolveSelector(selector, _node));
+      nodesLen = nodes.length;
+      for (iNode = 0; iNode < nodesLen; iNode++) {
+        descendantNodes = visit(nodes[iNode], 1);
+        descLen = descendantNodes.length;
+        for (iDescendant = 0; iDescendant < descLen; iDescendant++) {
+          for (iSelector = 0; iSelector < selLen; iSelector++) {
+            newNodes = resolveSelector(
+              selectors[iSelector],
+              descendantNodes[iDescendant]
+            );
+            newLen = newNodes.length;
+            for (iNewNode = 0; iNewNode < newLen; iNewNode++) {
+              result.push(newNodes[iNewNode]);
+            }
           }
         }
       }
@@ -62,25 +80,28 @@ function resolveSelector(selector, node) {
       break;
     case "SliceSelector":
       if (Array.isArray(node.value)) {
-        for (var [i, value] of slice(node.value, selector)) {
-          result.push(newChild(node, value, i));
+        var sliced = slice(node.value, selector);
+        for (var i = 0, slicedLen = sliced.length; i < slicedLen; i++) {
+          result.push(newChild(node, sliced[1], sliced[0]));
         }
       }
       break;
     case "WildcardSelector":
       if (Array.isArray(node.value)) {
-        for (var i = 0; i < node.value.length; i++) {
+        for (var i = 0, arrLen = node.value.length; i < arrLen; i++) {
           result.push(newChild(node, node.value[i], i));
         }
       } else if (isPlainObject(node.value)) {
-        for (var [key, value] of Object.entries(node.value)) {
-          result.push(newChild(node, value, key));
+        for (var key in node.value) {
+          if (Object.hasOwn(node.value, key)) {
+            result.push(newChild(node, node.value[key], key));
+          }
         }
       }
       break;
     case "FilterSelector":
       if (Array.isArray(node.value)) {
-        for (var i = 0; i < node.value.length; i++) {
+        for (var i = 0, arrLen = node.value.length; i < arrLen; i++) {
           if (
             isTruthy(
               evaluateExpression(selector.expression, {
@@ -94,23 +115,26 @@ function resolveSelector(selector, node) {
           }
         }
       } else if (isPlainObject(node.value)) {
-        for (var [key, value] of Object.entries(node.value)) {
-          if (
-            isTruthy(
-              evaluateExpression(selector.expression, {
-                value: value,
-                root: node.root,
-                functionExtensions: FUNCTION_EXTENSIONS
-              })
-            )
-          ) {
-            result.push(newChild(node, value, key));
+        for (var key in node.value) {
+          if (Object.hasOwn(node.value, key)) {
+            var value = node.value[key];
+            if (
+              isTruthy(
+                evaluateExpression(selector.expression, {
+                  value: value,
+                  root: node.root,
+                  functionExtensions: FUNCTION_EXTENSIONS
+                })
+              )
+            ) {
+              result.push(newChild(node, value, key));
+            }
           }
         }
       }
       break;
     default:
-      throw new Error(`unexpected selector ${selector}`);
+      throw new Error("unexpected selector " + selector);
   }
 
   return result;
@@ -140,61 +164,61 @@ function evaluateExpression(expr, context) {
     case "EQ":
       left = evaluateExpression(expr.left, context);
       if (isNodeList(left) && left.nodes.length === 1) {
-        left = left.nodes[0]?.value;
+        left = left.nodes[0].value;
       }
       right = evaluateExpression(expr.right, context);
       if (isNodeList(right) && right.nodes.length === 1) {
-        right = right.nodes[0]?.value;
+        right = right.nodes[0].value;
       }
       return eq(left, right);
     case "NE":
       left = evaluateExpression(expr.left, context);
       if (isNodeList(left) && left.nodes.length === 1) {
-        left = left.nodes[0]?.value;
+        left = left.nodes[0].value;
       }
       right = evaluateExpression(expr.right, context);
       if (isNodeList(right) && right.nodes.length === 1) {
-        right = right.nodes[0]?.value;
+        right = right.nodes[0].value;
       }
       return !eq(left, right);
     case "LT":
       left = evaluateExpression(expr.left, context);
       if (isNodeList(left) && left.nodes.length === 1) {
-        left = left.nodes[0]?.value;
+        left = left.nodes[0].value;
       }
       right = evaluateExpression(expr.right, context);
       if (isNodeList(right) && right.nodes.length === 1) {
-        right = right.nodes[0]?.value;
+        right = right.nodes[0].value;
       }
       return lt(left, right);
     case "LE":
       left = evaluateExpression(expr.left, context);
       if (isNodeList(left) && left.nodes.length === 1) {
-        left = left.nodes[0]?.value;
+        left = left.nodes[0].value;
       }
       right = evaluateExpression(expr.right, context);
       if (isNodeList(right) && right.nodes.length === 1) {
-        right = right.nodes[0]?.value;
+        right = right.nodes[0].value;
       }
       return lt(left, right) || eq(left, right);
     case "GT":
       left = evaluateExpression(expr.left, context);
       if (isNodeList(left) && left.nodes.length === 1) {
-        left = left.nodes[0]?.value;
+        left = left.nodes[0].value;
       }
       right = evaluateExpression(expr.right, context);
       if (isNodeList(right) && right.nodes.length === 1) {
-        right = right.nodes[0]?.value;
+        right = right.nodes[0].value;
       }
       return lt(right, left);
     case "GE":
       left = evaluateExpression(expr.left, context);
       if (isNodeList(left) && left.nodes.length === 1) {
-        left = left.nodes[0]?.value;
+        left = left.nodes[0].value;
       }
       right = evaluateExpression(expr.right, context);
       if (isNodeList(right) && right.nodes.length === 1) {
-        right = right.nodes[0]?.value;
+        right = right.nodes[0].value;
       }
       return lt(right, left) || eq(left, right);
     case "AbsoluteQuery":
@@ -211,7 +235,7 @@ function evaluateExpression(expr, context) {
       var func = context.functionExtensions[expr.name];
 
       if (!func) {
-        throw new Error(`filter function '${expr.name}' is undefined`);
+        throw new Error("filter function '" + expr.name + "' is undefined");
       }
 
       var args = expr.args.map(function (arg, i) {
@@ -221,22 +245,31 @@ function evaluateExpression(expr, context) {
         );
       });
 
-      return func.call(...args);
+      return func.apply(null, args);
     default:
       break;
   }
 }
 
-function visit(node, depth = 1) {
+function visit(node, depth) {
   var result = [node];
+  var newChildren;
 
   if (Array.isArray(node.value)) {
     for (var i = 0; i < node.value.length; i++) {
-      result.push(...visit(newChild(node, node.value[i], i), depth + 1));
+      newChildren = visit(newChild(node, node.value[i], i), depth + 1);
+      for (var j = 0; j < newChildren.length; j++) {
+        result.push(newChildren[j]);
+      }
     }
   } else if (isPlainObject(node.value)) {
-    for (var [key, value] of Object.entries(node.value)) {
-      result.push(...visit(newChild(node, value, key), depth + 1));
+    for (var key in node.value) {
+      if (Object.hasOwn(node.value, key)) {
+        newChildren = visit(newChild(node, node.value[key], key), depth + 1);
+        for (var i = 0; i < newChildren.length; i++) {
+          result.push(newChildren[i]);
+        }
+      }
     }
   }
 
@@ -308,14 +341,16 @@ function unpackNodeList(arg, argType) {
     case 0:
       return NOTHING;
     case 1:
-      return arg.nodes[0]?.value;
+      return arg.nodes[0].value;
     default:
       return arg;
   }
 }
 
 function newChild(node, value, key) {
-  return { value, location: [...node.location, key], root: node.root };
+  var newLocation = node.location.slice();
+  newLocation.push(key);
+  return { value: value, location: newLocation, root: node.root };
 }
 
 function isPlainObject(value) {
@@ -343,7 +378,11 @@ function isNodeList(value) {
 }
 
 function eq(left, right) {
-  if (isNodeList(right)) [left, right] = [right, left];
+  if (isNodeList(right)) {
+    var t = left;
+    left = right;
+    right = t;
+  }
 
   if (isNodeList(left)) {
     if (isNodeList(right)) {
@@ -352,7 +391,7 @@ function eq(left, right) {
       }
 
       if (left.nodes.length === 1 && right.nodes.length === 1) {
-        return deepEquals(left.nodes[0]?.value, right.nodes[0]?.value);
+        return deepEquals(left.nodes[0].value, right.nodes[0].value);
       }
     }
 
@@ -361,7 +400,7 @@ function eq(left, right) {
     }
 
     if (left.nodes.length === 1) {
-      return deepEquals(left.nodes[0]?.value, right);
+      return deepEquals(left.nodes[0].value, right);
     }
 
     return false;
@@ -409,7 +448,8 @@ function deepEquals(a, b) {
       return false;
     }
 
-    for (var key of keysA) {
+    for (var i = 0, len = keysA.length; i < len; i++) {
+      var key = keysA[i];
       if (!deepEquals(a[key], b[key])) {
         return false;
       }
@@ -489,7 +529,10 @@ function mapRegexp(pattern) {
   var escaped = false;
   var charClass = false;
   var parts = [];
-  for (var ch of pattern) {
+  var ch = "";
+  for (var i = 0, len = pattern.length; i < len; i++) {
+    ch = pattern[i];
+
     if (escaped) {
       parts.push(ch);
       escaped = false;
@@ -548,15 +591,22 @@ function canonicalPath(node) {
     node.location
       .map(function (key) {
         if (isString(key)) {
-          return `[${canonicalString(key)}]`;
+          return "[" + canonicalString(key) + "]";
         }
 
-        return `[${key}]`;
+        return "[" + key + "]";
       })
       .join("")
   );
 }
 
 function canonicalString(name) {
-  return `'${JSON.stringify(name).slice(1, -1).replaceAll('\\"', '"').replaceAll("'", "\\'")}'`;
+  return (
+    "'" +
+    JSON.stringify(name)
+      .slice(1, -1)
+      .replaceAll('\\"', '"')
+      .replaceAll("'", "\\'") +
+    "'"
+  );
 }

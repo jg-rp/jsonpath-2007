@@ -1,3 +1,4 @@
+// TODO: implement without regexp because `y` flag was not available in ES3
 var reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
 var reIndex = /-?\d+/y;
 var reInt = /-?\d+[eE]\+?\d+/y;
