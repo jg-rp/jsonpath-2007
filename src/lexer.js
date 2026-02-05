@@ -8,11 +8,11 @@ var reTrivia = /[ \n\r\t]+/y;
 function tokenize(input) {
   var tokens = [];
   var length = input.length;
-  let pos = 0;
-  let ch = NaN;
-  let match = null;
-  let token;
-  let new_pos;
+  var pos = 0;
+  var ch = NaN;
+  var match = null;
+  var token;
+  var tokenAndPos;
 
   while (pos < length) {
     ch = input.charCodeAt(pos);
@@ -137,14 +137,14 @@ function tokenize(input) {
         }
         break;
       case 39: // '
-        [token, new_pos] = scan_single_quoted_string(input, pos + 1);
-        tokens.push(token);
-        pos = new_pos;
+        tokenAndPos = scanSingleQuotedString(input, pos + 1);
+        tokens.push(tokenAndPos[0]);
+        pos = tokenAndPos[1];
         break;
       case 34: // "
-        [token, new_pos] = scan_double_quoted_string(input, pos + 1);
-        tokens.push(token);
-        pos = new_pos;
+        tokenAndPos = scanDoubleQuotedString(input, pos + 1);
+        tokens.push(tokenAndPos[0]);
+        pos = tokenAndPos[1];
         break;
       default:
         // TODO: try checking `ch` character class before doing regexp
@@ -186,7 +186,7 @@ function tokenize(input) {
 
         tokens.push({
           kind: T.ERROR,
-          value: `unknown token '${String.fromCharCode(ch)}'`,
+          value: "unknown token '" + String.fromCharCode(ch) + "'",
           index: pos
         });
         pos += 1;
@@ -203,15 +203,15 @@ function scan(pattern, input, pos) {
   return match ? match[0] : null;
 }
 
-function scan_single_quoted_string(input, pos) {
+function scanSingleQuotedString(input, pos) {
   var start = pos;
   var length = input.length;
 
   /** @type {number} */
-  let ch = NaN;
+  var ch = NaN;
 
   /** @type {import("./token").TokenKind} */
-  let kind = T.SINGLE_QUOTED_STRING;
+  var kind = T.SINGLE_QUOTED_STRING;
 
   while (pos < length) {
     ch = input.charCodeAt(pos);
@@ -219,7 +219,7 @@ function scan_single_quoted_string(input, pos) {
     switch (ch) {
       case 92: // \
         if (input.charCodeAt(pos + 1) === 34) {
-          throw new Error(`invalid escape sequence '\\"' at ${pos}`);
+          throw new Error("invalid escape sequence '\\\"' at " + pos);
         }
         pos += 2;
         kind = T.SINGLE_QUOTED_ESC_STRING;
@@ -239,7 +239,7 @@ function scan_single_quoted_string(input, pos) {
         // This does break our T.ERROR token policy though.
         if (ch <= 0x1f) {
           // TODO: display ch as hex
-          throw new Error(`invalid character ${ch} at ${pos}`);
+          throw new Error("invalid character " + ch + " at " + pos);
         }
         pos += 1;
     }
@@ -251,15 +251,15 @@ function scan_single_quoted_string(input, pos) {
   ];
 }
 
-function scan_double_quoted_string(input, pos) {
+function scanDoubleQuotedString(input, pos) {
   var start = pos;
   var length = input.length;
 
   /** @type {number} */
-  let ch = NaN;
+  var ch = NaN;
 
   /** @type {import("./token").TokenKind} */
-  let kind = T.DOUBLE_QUOTED_STRING;
+  var kind = T.DOUBLE_QUOTED_STRING;
 
   while (pos < length) {
     ch = input.charCodeAt(pos);
@@ -267,7 +267,7 @@ function scan_double_quoted_string(input, pos) {
     switch (ch) {
       case 92: // \
         if (input.charCodeAt(pos + 1) === 39) {
-          throw new Error(`invalid escape sequence '\\\'' at ${pos}`);
+          throw new Error("invalid escape sequence '\\\'' at " + pos);
         }
         pos += 2;
         kind = T.DOUBLE_QUOTED_ESC_STRING;
@@ -287,7 +287,7 @@ function scan_double_quoted_string(input, pos) {
         // This does break our T.ERROR token policy though.
         if (ch <= 0x1f) {
           // TODO: display ch as hex
-          throw new Error(`invalid character ${ch} at ${pos}`);
+          throw new Error("invalid character " + ch + " at " + pos);
         }
 
         pos += 1;
