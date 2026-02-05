@@ -1,9 +1,8 @@
-// TODO: implement without regexp because `y` flag was not available in ES3
-var reFloat = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
-var reIndex = /-?\d+/y;
-var reInt = /-?\d+[eE]\+?\d+/y;
-var reName = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
-var reTrivia = /[ \n\r\t]+/y;
+var RE_FLOAT = /((?:-?\d+\.\d+(?:[eE][+-]?\d+)?)|(-?\d+[eE]-\d+))/y;
+var RE_INDEX = /-?\d+/y;
+var RE_INT = /-?\d+[eE]\+?\d+/y;
+var RE_NAME = /[\u0080-\uFFFFa-zA-Z_][\u0080-\uFFFFa-zA-Z0-9_-]*/y;
+var RE_TRIVIA = /[ \n\r\t]+/y;
 
 function tokenize(input) {
   var tokens = [];
@@ -147,41 +146,45 @@ function tokenize(input) {
         pos = tokenAndPos[1];
         break;
       default:
-        // TODO: try checking `ch` character class before doing regexp
-
-        match = scan(reName, input, pos);
-        if (match) {
-          tokens.push({ kind: T.NAME, value: match, index: pos });
-          pos += match.length;
-          continue;
+        if (isNameFirstCh(ch)) {
+          match = scan(RE_NAME, input, pos);
+          if (match) {
+            tokens.push({ kind: T.NAME, value: match, index: pos });
+            pos += match.length;
+            continue;
+          }
         }
 
-        match = scan(reTrivia, input, pos);
-        if (match) {
-          tokens.push({ kind: T.TRIVIA, value: match, index: pos });
-          pos += match.length;
-          continue;
+        if (isTrivia(ch)) {
+          match = scan(RE_TRIVIA, input, pos);
+          if (match) {
+            tokens.push({ kind: T.TRIVIA, value: match, index: pos });
+            pos += match.length;
+            continue;
+          }
         }
 
-        match = scan(reFloat, input, pos);
-        if (match) {
-          tokens.push({ kind: T.FLOAT, value: match, index: pos });
-          pos += match.length;
-          continue;
-        }
+        if (isNumberCh(ch)) {
+          match = scan(RE_FLOAT, input, pos);
+          if (match) {
+            tokens.push({ kind: T.FLOAT, value: match, index: pos });
+            pos += match.length;
+            continue;
+          }
 
-        match = scan(reInt, input, pos);
-        if (match) {
-          tokens.push({ kind: T.INTEGER, value: match, index: pos });
-          pos += match.length;
-          continue;
-        }
+          match = scan(RE_INT, input, pos);
+          if (match) {
+            tokens.push({ kind: T.INTEGER, value: match, index: pos });
+            pos += match.length;
+            continue;
+          }
 
-        match = scan(reIndex, input, pos);
-        if (match) {
-          tokens.push({ kind: T.INDEX, value: match, index: pos });
-          pos += match.length;
-          continue;
+          match = scan(RE_INDEX, input, pos);
+          if (match) {
+            tokens.push({ kind: T.INDEX, value: match, index: pos });
+            pos += match.length;
+            continue;
+          }
         }
 
         tokens.push({
@@ -298,4 +301,21 @@ function scanDoubleQuotedString(input, pos) {
     { kind: T.ERROR, value: "unclosed string literal", index: start },
     length
   ];
+}
+
+function isNumberCh(ch) {
+  return ch == 45 || (ch >= 48 && ch <= 57);
+}
+
+function isNameFirstCh(ch) {
+  return (
+    (ch >= 65 && ch <= 90) ||
+    (ch >= 97 && ch <= 122) ||
+    ch == 95 ||
+    (ch >= 0x80 && ch <= 0xffff)
+  );
+}
+
+function isTrivia(ch) {
+  return ch === 32 || ch === 9 || ch === 10 || ch === 13;
 }
