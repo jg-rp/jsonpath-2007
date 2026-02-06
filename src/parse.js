@@ -40,8 +40,8 @@ COMPARISON_OPERATORS[T.NE] = true;
 
 var EOI = { kind: T.EOI, value: "", index: -1 };
 
-function parse(tokens, query) {
-  var state = { tokens: tokens, pos: 0, query: query };
+function parse(tokens, query, options) {
+  var state = { tokens: tokens, pos: 0, query: query, options: options || {} };
   eat(state, T.DOLLAR);
   var segments = parseSegments(state);
   eat(state, T.EOI);

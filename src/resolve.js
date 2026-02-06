@@ -4,15 +4,22 @@ var NOTHING = {};
 // TODO: "cache" node.value to avoid repeated resolve
 // TODO: use `hasOwnProperty` guard on all `for ... in`
 
-function resolve(query, data) {
+/**
+ * Resolve a pre-compiled JSONPath expression against `data`.
+ * @param {JSONPathQuery} query A compiled query.
+ * @param {object} data Target JSON-like data.
+ * @param {JSONPathOptions} options Path parsing and resolution configuration.
+ * @returns {Array<JSONPathNode>} An array of nodes found by applying `query` to `data`.
+ */
+function resolve(query, data, options) {
   var nodes = [{ value: data, location: [], root: data }];
   for (var segment in query.segments) {
-    nodes = resolveSegment(query.segments[segment], nodes);
+    nodes = resolveSegment(query.segments[segment], nodes, options || {});
   }
   return nodes;
 }
 
-function resolveSegment(segment, nodes) {
+function resolveSegment(segment, nodes, options) {
   var result = [];
   var selectors = segment.selectors;
   var selLen = selectors.length;
@@ -27,7 +34,11 @@ function resolveSegment(segment, nodes) {
     case "ChildSegment":
       for (iNode = 0; iNode < nodesLen; iNode++) {
         for (iSelector = 0; iSelector < selLen; iSelector++) {
-          newNodes = resolveSelector(selectors[iSelector], nodes[iNode]);
+          newNodes = resolveSelector(
+            selectors[iSelector],
+            nodes[iNode],
+            options
+          );
           newLen = newNodes.length;
           for (iNewNode = 0; iNewNode < newLen; iNewNode++) {
             result.push(newNodes[iNewNode]);
@@ -43,7 +54,8 @@ function resolveSegment(segment, nodes) {
           for (iSelector = 0; iSelector < selLen; iSelector++) {
             newNodes = resolveSelector(
               selectors[iSelector],
-              descendantNodes[iDescendant]
+              descendantNodes[iDescendant],
+              options
             );
             newLen = newNodes.length;
             for (iNewNode = 0; iNewNode < newLen; iNewNode++) {
@@ -58,7 +70,7 @@ function resolveSegment(segment, nodes) {
   return result;
 }
 
-function resolveSelector(selector, node) {
+function resolveSelector(selector, node, options) {
   var result = [];
 
   switch (selector.kind) {
@@ -107,7 +119,7 @@ function resolveSelector(selector, node) {
               evaluateExpression(selector.expression, {
                 value: node.value[i],
                 root: node.root,
-                functionExtensions: FUNCTION_EXTENSIONS
+                options: options
               })
             )
           ) {
@@ -123,7 +135,7 @@ function resolveSelector(selector, node) {
                 evaluateExpression(selector.expression, {
                   value: value,
                   root: node.root,
-                  functionExtensions: FUNCTION_EXTENSIONS
+                  options: options
                 })
               )
             ) {
@@ -224,15 +236,17 @@ function evaluateExpression(expr, context) {
     case "AbsoluteQuery":
       return {
         kind: "JSONPathNodeList",
-        nodes: resolve(expr.query, context.root)
+        nodes: resolve(expr.query, context.root, context.options)
       };
     case "RelativeQuery":
       return {
         kind: "JSONPathNodeList",
-        nodes: resolve(expr.query, context.value)
+        nodes: resolve(expr.query, context.value, context.options)
       };
     case "FunctionExtension":
-      var func = context.functionExtensions[expr.name];
+      var func = (context.options.functionExtensions || FUNCTION_EXTENSIONS)[
+        expr.name
+      ];
 
       if (!func) {
         throw new JSONPathError(
@@ -424,169 +438,11 @@ function lt(left, right) {
   return false;
 }
 
-function deepEquals(a, b) {
-  if (a === b) {
-    return true;
-  }
-
-  if (Array.isArray(a)) {
-    if (Array.isArray(b)) {
-      if (a.length !== b.length) {
-        return false;
-      }
-      for (var i = 0; i < a.length; i++) {
-        if (!deepEquals(a[i], b[i])) {
-          return false;
-        }
-      }
-      return true;
-    }
-    return false;
-  } else if (isPlainObject(a) && isPlainObject(b)) {
-    var keysA = Object.keys(a);
-    var keysB = Object.keys(b);
-
-    if (keysA.length !== keysB.length) {
-      return false;
-    }
-
-    for (var i = 0, len = keysA.length; i < len; i++) {
-      var key = keysA[i];
-      if (!deepEquals(a[key], b[key])) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-var CountFunctionExtension = {
-  argTypes: ["NodesType"],
-  returnType: "ValueType",
-  call: function (nodeList) {
-    return nodeList.nodes.length;
-  }
-};
-
-var LengthFunctionExtension = {
-  argTypes: ["ValueType"],
-  returnType: "ValueType",
-  call: function (value) {
-    if (value === NOTHING) return NOTHING;
-    if (Array.isArray(value) || isString(value)) return value.length;
-    if (isPlainObject(value)) return Object.keys(value).length;
-    return NOTHING;
-  }
-};
-
-var MatchFunctionExtension = {
-  argTypes: ["ValueType", "ValueType"],
-  returnType: "LogicalType",
-  call: function (value, pattern) {
-    if (!isString(value) || !isString(pattern)) {
-      return false;
-    }
-
-    try {
-      // TODO: cache
-      var re = new RegExp(fullMatch(pattern), "u");
-      return re.test(value);
-    } catch (error) {
-      return false;
-    }
-  }
-};
-
-var SearchFunctionExtension = {
-  argTypes: ["ValueType", "ValueType"],
-  returnType: "LogicalType",
-  call: function (value, pattern) {
-    if (!isString(value) || !isString(pattern)) {
-      return false;
-    }
-
-    try {
-      // TODO: cache
-      var re = new RegExp(mapRegexp(pattern), "u");
-      return !!value.match(re);
-    } catch (error) {
-      return false;
-    }
-  }
-};
-
-var ValueFunctionExtension = {
-  argTypes: ["NodesType"],
-  returnType: "ValueType",
-  call: function (nodeList) {
-    if (nodeList.nodes.length === 1) return nodeList.nodes[0].value;
-    return NOTHING;
-  }
-};
-
-function mapRegexp(pattern) {
-  var escaped = false;
-  var charClass = false;
-  var parts = [];
-  var ch = "";
-  for (var i = 0, len = pattern.length; i < len; i++) {
-    ch = pattern[i];
-
-    if (escaped) {
-      parts.push(ch);
-      escaped = false;
-      continue;
-    }
-
-    switch (ch) {
-      case ".":
-        if (!charClass) {
-          parts.push("(?:(?![\r\n])\\P{Cs}|\\p{Cs}\\p{Cs})");
-        } else {
-          parts.push(ch);
-        }
-        break;
-      case "\\":
-        escaped = true;
-        parts.push(ch);
-        break;
-      case "[":
-        charClass = true;
-        parts.push(ch);
-        break;
-      case "]":
-        charClass = false;
-        parts.push(ch);
-        break;
-      default:
-        parts.push(ch);
-        break;
-    }
-  }
-  return parts.join("");
-}
-
-function fullMatch(pattern) {
-  var parts = [];
-  var explicitCaret = pattern.startsWith("^");
-  var explicitDollar = pattern.endsWith("$");
-  if (!explicitCaret && !explicitDollar) parts.push("^(?:");
-  parts.push(mapRegexp(pattern));
-  if (!explicitCaret && !explicitDollar) parts.push(")$");
-  return parts.join("");
-}
-
-var FUNCTION_EXTENSIONS = {
-  count: CountFunctionExtension,
-  length: LengthFunctionExtension,
-  match: MatchFunctionExtension,
-  search: SearchFunctionExtension,
-  value: ValueFunctionExtension
-};
-
+/**
+ * Return the canonical JSONPath expression for the given node.
+ * @param {JSONPathNode} node
+ * @returns {string}
+ */
 function canonicalPath(node) {
   return (
     "$" +

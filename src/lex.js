@@ -10,14 +10,10 @@ function tokenize(input) {
   var pos = 0;
   var ch = NaN;
   var match = null;
-  var token;
   var tokenAndPos;
 
   while (pos < length) {
     ch = input.charCodeAt(pos);
-
-    // NOTE: This big switch statement benchmarks about 3 times faster than a
-    // symbol regexp and map lookup.
 
     switch (ch) {
       case 42: // *

@@ -3,10 +3,12 @@ FOOTER = src/footer.js
 
 INTERNAL = \
   src/errors.js \
+  src/utils.js \
   src/token.js \
-  src/lexer.js \
-  src/parser.js \
-  src/path.js \
+  src/lex.js \
+  src/parse.js \
+  src/resolve.js \
+  src/functions.js \
   src/api.js
 
 DIST = dist/jsonpath.js

@@ -40,7 +40,6 @@ var T = {
 };
 
 var REVERSE_T = {};
-
 for (var key in T) {
   REVERSE_T[T[key]] = key;
 }

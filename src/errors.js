@@ -1,3 +1,10 @@
+/**
+ * The base class for all JSONPath errors.
+ * @param {string} message
+ * @param {JSONPathToken} token
+ * @param {string} query
+ * @param {string?} customName
+ */
 function JSONPathError(message, token, query, customName) {
   this.name = customName || "JSONPathError";
 
@@ -35,6 +42,13 @@ function detailedMessage(name, message, token, query) {
   ].join("\n");
 }
 
+/**
+ * An error caused by a JSONPath expression syntax error.
+ * @param {string} message
+ * @param {JSONPathToken} token
+ * @param {string} query
+ * @extends JSONPathError
+ */
 function JSONPathSyntaxError(message, token, query) {
   JSONPathError.call(this, message, token, query, "JSONPathSyntaxError");
 }
@@ -55,11 +69,3 @@ function JSONPathNameError(message, token, query) {
 
 JSONPathNameError.prototype = new JSONPathError();
 JSONPathNameError.prototype.constructor = JSONPathNameError;
-
-function stringRepeat(str, count) {
-  var result = "";
-  for (var i = 0; i < count; i++) {
-    result += str;
-  }
-  return result;
-}

@@ -1,6 +1,5 @@
 {
   "name": "js-jsonpath",
-  "module": "src/index.js",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",
