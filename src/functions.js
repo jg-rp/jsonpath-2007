@@ -11,11 +11,13 @@ var LengthFunctionExtension = {
   returnType: "ValueType",
   call: function (value) {
     if (value === NOTHING) return NOTHING;
-    if (Array.isArray(value) || isString(value)) return value.length;
+    if (isArray(value) || isString(value)) return value.length;
     if (isPlainObject(value)) return Object.keys(value).length;
     return NOTHING;
   }
 };
+
+var matchRegexCache = createLRUCache(64);
 
 var MatchFunctionExtension = {
   argTypes: ["ValueType", "ValueType"],
@@ -25,15 +27,23 @@ var MatchFunctionExtension = {
       return false;
     }
 
-    try {
-      // TODO: cache
-      var re = new RegExp(fullMatch(pattern), "u");
+    var re = matchRegexCache.get(pattern);
+    if (re) {
       return re.test(value);
+    }
+
+    try {
+      re = new RegExp(fullMatch(pattern), "u");
+      matchRegexCache.set(pattern, re);
     } catch (error) {
       return false;
     }
+
+    return re.test(value);
   }
 };
+
+var searchRegexCache = createLRUCache(64);
 
 var SearchFunctionExtension = {
   argTypes: ["ValueType", "ValueType"],
@@ -43,13 +53,19 @@ var SearchFunctionExtension = {
       return false;
     }
 
-    try {
-      // TODO: cache
-      var re = new RegExp(mapRegexp(pattern), "u");
+    var re = searchRegexCache.get(pattern);
+    if (re) {
       return !!value.match(re);
+    }
+
+    try {
+      re = new RegExp(mapRegexp(pattern), "u");
+      searchRegexCache.set(pattern, re);
     } catch (error) {
       return false;
     }
+
+    return !!value.match(re);
   }
 };
 

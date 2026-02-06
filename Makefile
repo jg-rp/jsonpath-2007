@@ -4,6 +4,7 @@ FOOTER = src/footer.js
 INTERNAL = \
   src/errors.js \
   src/utils.js \
+  src/lru_cache.js \
   src/token.js \
   src/lex.js \
   src/parse.js \

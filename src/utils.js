@@ -1,3 +1,7 @@
+var isArray = function (obj) {
+  return Object.prototype.toString.call(obj) === "[object Array]";
+};
+
 function stringRepeat(str, count) {
   var result = "";
   for (var i = 0; i < count; i++) {
@@ -21,8 +25,8 @@ function deepEquals(a, b) {
     return true;
   }
 
-  if (Array.isArray(a)) {
-    if (Array.isArray(b)) {
+  if (isArray(a)) {
+    if (isArray(b)) {
       if (a.length !== b.length) {
         return false;
       }

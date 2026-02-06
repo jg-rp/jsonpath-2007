@@ -83,7 +83,7 @@ function resolveSelector(selector, node, options) {
       }
       break;
     case "IndexSelector":
-      if (Array.isArray(node.value)) {
+      if (isArray(node.value)) {
         var normIndex = normalizedIndex(selector.index, node.value.length);
         if (normIndex in node.value) {
           result.push(newChild(node, node.value[normIndex], normIndex));
@@ -91,7 +91,7 @@ function resolveSelector(selector, node, options) {
       }
       break;
     case "SliceSelector":
-      if (Array.isArray(node.value)) {
+      if (isArray(node.value)) {
         var sliced = slice(node.value, selector);
         for (var i = 0, slicedLen = sliced.length; i < slicedLen; i++) {
           result.push(newChild(node, sliced[i][1], sliced[i][0]));
@@ -99,7 +99,7 @@ function resolveSelector(selector, node, options) {
       }
       break;
     case "WildcardSelector":
-      if (Array.isArray(node.value)) {
+      if (isArray(node.value)) {
         for (var i = 0, arrLen = node.value.length; i < arrLen; i++) {
           result.push(newChild(node, node.value[i], i));
         }
@@ -112,7 +112,7 @@ function resolveSelector(selector, node, options) {
       }
       break;
     case "FilterSelector":
-      if (Array.isArray(node.value)) {
+      if (isArray(node.value)) {
         for (var i = 0, arrLen = node.value.length; i < arrLen; i++) {
           if (
             isTruthy(
@@ -271,7 +271,7 @@ function visit(node, depth) {
   var result = [node];
   var newChildren;
 
-  if (Array.isArray(node.value)) {
+  if (isArray(node.value)) {
     for (var i = 0; i < node.value.length; i++) {
       newChildren = visit(newChild(node, node.value[i], i), depth + 1);
       for (var j = 0; j < newChildren.length; j++) {
@@ -370,7 +370,7 @@ function newChild(node, value, key) {
 }
 
 function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !isArray(value);
 }
 
 function isString(value) {
