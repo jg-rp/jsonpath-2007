@@ -1,24 +1,16 @@
 {
   "compilerOptions": {
-    "lib": ["ESNext"],
-    "target": "ESNext",
-    "module": "Preserve",
-    "moduleDetection": "force",
-    "allowJs": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "noEmit": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noPropertyAccessFromIndexSignature": true
+    "checkJs": true,
+
+    /* Option 'target=ES3' has been removed. :( */
+    "target": "ES5",
+    "module": "None",
+    "lib": ["ES5"],
+    "noImplicitAny": false,
+    "strict": false,
+    "moduleResolution": "Classic"
   },
-  "include": ["src/**/*.js"],
-  "exclude": ["node_modules", "dist"]
+  "files": [
+    "dist/jsonpath.js"
+  ]
 }

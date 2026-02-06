@@ -23,6 +23,7 @@ function stringRepeat(str, count) {
 }
 
 function shallowCopy(obj) {
+  /** @type {any} */
   var copy = {};
   for (var key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {

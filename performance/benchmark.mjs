@@ -31,6 +31,8 @@ const COMPILED_QUERIES = TEST_CASES.map((t) => {
 //   time: 1000,
 // });
 
+// XXX: This is specific to NodeJS.
+
 const bench = new Bench({
   name: "JSONPath Valid CTS Queries",
   setup: (_task, mode) => {
@@ -39,7 +41,7 @@ const bench = new Bench({
       globalThis.gc();
     }
   },
-  time: 1000,
+  time: 10000,
 });
 
 bench.add("just compile", () => {

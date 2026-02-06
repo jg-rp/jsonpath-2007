@@ -7,7 +7,7 @@
 
 /**
  * @typedef {object} JSONPathQuery
- * @property {Array<Segment>} segments
+ * @property {Array<any>} segments
  */
 
 /**

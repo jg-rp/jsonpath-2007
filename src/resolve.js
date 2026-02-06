@@ -77,7 +77,7 @@ function resolveSelector(selector, node, options) {
     case "NameSelector":
       if (
         isPlainObject(node.value) &&
-        Object.hasOwn(node.value, selector.name)
+        Object.prototype.hasOwnProperty.call(node.value, selector.name)
       ) {
         result.push(newChild(node, node.value[selector.name], selector.name));
       }
@@ -105,7 +105,7 @@ function resolveSelector(selector, node, options) {
         }
       } else if (isPlainObject(node.value)) {
         for (var key in node.value) {
-          if (Object.hasOwn(node.value, key)) {
+          if (Object.prototype.hasOwnProperty.call(node.value, key)) {
             result.push(newChild(node, node.value[key], key));
           }
         }
@@ -128,7 +128,7 @@ function resolveSelector(selector, node, options) {
         }
       } else if (isPlainObject(node.value)) {
         for (var key in node.value) {
-          if (Object.hasOwn(node.value, key)) {
+          if (Object.prototype.hasOwnProperty.call(node.value, key)) {
             var value = node.value[key];
             if (
               isTruthy(
@@ -280,7 +280,7 @@ function visit(node, depth) {
     }
   } else if (isPlainObject(node.value)) {
     for (var key in node.value) {
-      if (Object.hasOwn(node.value, key)) {
+      if (Object.prototype.hasOwnProperty.call(node.value, key)) {
         newChildren = visit(newChild(node, node.value[key], key), depth + 1);
         for (var i = 0; i < newChildren.length; i++) {
           result.push(newChildren[i]);
@@ -451,8 +451,8 @@ function canonicalString(name) {
     "'" +
     JSON.stringify(name)
       .slice(1, -1)
-      .replaceAll('\\"', '"')
-      .replaceAll("'", "\\'") +
+      .replace(/\\"/g, '"')
+      .replace(/'/g, "\\'") +
     "'"
   );
 }

@@ -578,7 +578,7 @@ function decodeStringLiteral(state, token) {
     case T.SINGLE_QUOTED_ESC_STRING:
       return unescapeString(
         state,
-        token.value.replaceAll('"', '\\"').replaceAll("\\'", "'"),
+        token.value.replace(/"/g, '\\"').replace(/\\'/g, "'"),
         token
       );
     case T.DOUBLE_QUOTED_ESC_STRING:
@@ -729,10 +729,8 @@ function decodeSlashU(state, value, index, token) {
       );
     }
 
-    codePoint =
-      0x10000 + (((codePoint & 0x03ff) << 10) | (lowSurrogate & 0x03ff));
-
     index += 9;
+    return [String.fromCharCode(codePoint, lowSurrogate), index];
   } else {
     index += 3;
   }
@@ -745,7 +743,7 @@ function decodeSlashU(state, value, index, token) {
     );
   }
 
-  return [String.fromCodePoint(codePoint), index];
+  return [String.fromCharCode(codePoint), index];
 }
 
 function isHighSurrogate(codepoint) {

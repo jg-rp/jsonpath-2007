@@ -1,9 +1,9 @@
 /**
  * The base class for all JSONPath errors.
- * @param {string} message
- * @param {JSONPathToken} token
- * @param {string} query
- * @param {string?} customName
+ * @param {string=} message
+ * @param {JSONPathToken=} token
+ * @param {string=} query
+ * @param {string=} customName
  */
 function JSONPathError(message, token, query, customName) {
   this.name = customName || "JSONPathError";
@@ -38,34 +38,20 @@ function detailedMessage(name, message, token, query) {
     pad + " -> '" + query + "' " + lineno + ":" + col,
     pad + " |",
     lineno + " | " + query,
-    pad + " | " + pointer + " " + message
+    pad + " | " + pointer + " " + message,
   ].join("\n");
 }
 
 /**
  * An error caused by a JSONPath expression syntax error.
- * @param {string} message
- * @param {JSONPathToken} token
- * @param {string} query
- * @extends JSONPathError
+ * @param {string=} message
+ * @param {JSONPathToken=} token
+ * @param {string=} query
  */
 function JSONPathSyntaxError(message, token, query) {
   JSONPathError.call(this, message, token, query, "JSONPathSyntaxError");
 }
 
 JSONPathSyntaxError.prototype = new JSONPathError();
+// @ts-ignore
 JSONPathSyntaxError.prototype.constructor = JSONPathSyntaxError;
-
-function JSONPathTypeError(message, token, query) {
-  JSONPathError.call(this, message, token, query, "JSONPathTypeError");
-}
-
-JSONPathTypeError.prototype = new JSONPathError();
-JSONPathTypeError.prototype.constructor = JSONPathTypeError;
-
-function JSONPathNameError(message, token, query) {
-  JSONPathError.call(this, message, token, query, "JSONPathNameError");
-}
-
-JSONPathNameError.prototype = new JSONPathError();
-JSONPathNameError.prototype.constructor = JSONPathNameError;
