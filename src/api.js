@@ -68,7 +68,7 @@ function compile(query, options) {
 
 /**
  * Return a mapping of built-in function extension names to their
- * implementation.
+ * implementations.
  *
  * Update the returned object with custom function extensions and pass it to
  * `find`, `compile` or `resolve` as `options.functionExtensions`.

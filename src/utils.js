@@ -2,6 +2,18 @@ var isArray = function (obj) {
   return Object.prototype.toString.call(obj) === "[object Array]";
 };
 
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !isArray(value);
+}
+
+function isString(value) {
+  return typeof value === "string";
+}
+
+function isNumber(value) {
+  return typeof value === "number";
+}
+
 function stringRepeat(str, count) {
   var result = "";
   for (var i = 0; i < count; i++) {

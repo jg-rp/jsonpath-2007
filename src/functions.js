@@ -17,6 +17,7 @@ var LengthFunctionExtension = {
   }
 };
 
+// TODO: store this on the filter context and set `this` to filter context?
 var matchRegexCache = createLRUCache(64);
 
 var MatchFunctionExtension = {

@@ -369,18 +369,6 @@ function newChild(node, value, key) {
   return { value: value, location: newLocation, root: node.root };
 }
 
-function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !isArray(value);
-}
-
-function isString(value) {
-  return typeof value === "string";
-}
-
-function isNumber(value) {
-  return typeof value === "number";
-}
-
 function isTruthy(value) {
   if (isNodeList(value) && value.nodes.length === 0) {
     return false;
