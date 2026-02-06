@@ -38,7 +38,7 @@ function detailedMessage(name, message, token, query) {
     pad + " -> '" + query + "' " + lineno + ":" + col,
     pad + " |",
     lineno + " | " + query,
-    pad + " | " + pointer + " " + message,
+    pad + " | " + pointer + " " + message
   ].join("\n");
 }
 
@@ -55,3 +55,31 @@ function JSONPathSyntaxError(message, token, query) {
 JSONPathSyntaxError.prototype = new JSONPathError();
 // @ts-ignore
 JSONPathSyntaxError.prototype.constructor = JSONPathSyntaxError;
+
+/**
+ * An error caused by a function extension type error.
+ * @param {string=} message
+ * @param {JSONPathToken=} token
+ * @param {string=} query
+ */
+function JSONPathTypeError(message, token, query) {
+  JSONPathError.call(this, message, token, query, "JSONPathTypeError");
+}
+
+JSONPathTypeError.prototype = new JSONPathError();
+// @ts-ignore
+JSONPathTypeError.prototype.constructor = JSONPathTypeError;
+
+/**
+ * An error caused by an unknown function extension.
+ * @param {string=} message
+ * @param {JSONPathToken=} token
+ * @param {string=} query
+ */
+function JSONPathNameError(message, token, query) {
+  JSONPathError.call(this, message, token, query, "JSONPathNameError");
+}
+
+JSONPathNameError.prototype = new JSONPathError();
+// @ts-ignore
+JSONPathNameError.prototype.constructor = JSONPathNameError;

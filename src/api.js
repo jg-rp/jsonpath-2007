@@ -80,7 +80,7 @@ function standardFunctionExtensions() {
 }
 
 /**
- * @typedef {object} JSONPathAPI
+ * @typedef {object}
  * @property {typeof find} find
  * @property {typeof compile} compile
  * @property {typeof resolve} resolve
@@ -88,6 +88,8 @@ function standardFunctionExtensions() {
  * @property {typeof canonicalPath} canonicalPath
  * @property {typeof JSONPathError} JSONPathError
  * @property {typeof JSONPathSyntaxError} JSONPathSyntaxError
+ * @property {typeof JSONPathTypeError} JSONPathTypeError
+ * @property {typeof JSONPathNameError} JSONPathNameError
  * @property {typeof standardFunctionExtensions} standardFunctionExtensions
  */
 var api = {
@@ -98,5 +100,7 @@ var api = {
   version: "0.0.1",
   JSONPathError: JSONPathError,
   JSONPathSyntaxError: JSONPathSyntaxError,
+  JSONPathTypeError: JSONPathTypeError,
+  JSONPathNameError: JSONPathNameError,
   standardFunctionExtensions: standardFunctionExtensions
 };

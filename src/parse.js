@@ -286,7 +286,7 @@ function parseSliceSelector(state) {
 function parseFilterSelector(state) {
   var token = eat(state, T.QUESTION);
   var expr = parseFilterExpression(state, P.LOWEST);
-  throwForNotCompared(state, expr, FUNCTION_EXTENSIONS);
+  throwForNotCompared(state, expr);
   return { kind: "FilterSelector", token: token, expression: expr };
 }
 
@@ -337,7 +337,7 @@ function parseFunctionExpression(state) {
 
   skip(state, T.TRIVIA);
   eat(state, T.RIGHT_PAREN);
-  validateFunctionSignature(state, startToken, args, FUNCTION_EXTENSIONS);
+  validateFunctionSignature(state, startToken, args);
 
   return {
     kind: "FunctionExtension",
@@ -435,8 +435,8 @@ function parseInfixExpression(state, left) {
   var right = parseFilterExpression(state, precedence);
 
   if (COMPARISON_OPERATORS[token.kind]) {
-    throwForNonComparable(state, left, FUNCTION_EXTENSIONS);
-    throwForNonComparable(state, right, FUNCTION_EXTENSIONS);
+    throwForNonComparable(state, left);
+    throwForNonComparable(state, right);
 
     switch (token.kind) {
       case T.EQ:
@@ -459,8 +459,8 @@ function parseInfixExpression(state, left) {
         );
     }
   } else {
-    throwForNotCompared(state, left, FUNCTION_EXTENSIONS);
-    throwForNotCompared(state, right, FUNCTION_EXTENSIONS);
+    throwForNotCompared(state, left);
+    throwForNotCompared(state, right);
 
     switch (token.kind) {
       case T.AND:
@@ -754,9 +754,9 @@ function isLowSurrogate(codepoint) {
   return codepoint >= 0xdc00 && codepoint <= 0xdfff;
 }
 
-function throwForNotCompared(state, expr, functionExtensions) {
+function throwForNotCompared(state, expr) {
   if (isLiteralExpression(expr)) {
-    throw new JSONPathSyntaxError(
+    throw new JSONPathTypeError(
       "filter expression literals must be compared",
       expr.token,
       state.query
@@ -764,10 +764,12 @@ function throwForNotCompared(state, expr, functionExtensions) {
   }
 
   if (expr.kind === "FunctionExtension") {
-    var func = functionExtensions[expr.name];
+    var func = (state.options.functionExtensions || FUNCTION_EXTENSIONS)[
+      expr.name
+    ];
 
     if (func === undefined) {
-      throw new JSONPathSyntaxError(
+      throw new JSONPathNameError(
         "unknown function extension " + expr.name,
         expr.token,
         state.query
@@ -775,7 +777,7 @@ function throwForNotCompared(state, expr, functionExtensions) {
     }
 
     if (func.returnType === "ValueType") {
-      throw new JSONPathSyntaxError(
+      throw new JSONPathTypeError(
         "result of " + expr.name + "() must be compared",
         expr.token,
         state.query
@@ -784,9 +786,9 @@ function throwForNotCompared(state, expr, functionExtensions) {
   }
 }
 
-function throwForNonComparable(state, expr, functionExtensions) {
+function throwForNonComparable(state, expr) {
   if (isFilterQuery(expr) && !isSingularQuery(expr.query)) {
-    throw new JSONPathSyntaxError(
+    throw new JSONPathTypeError(
       "non-singular query is not comparable",
       expr.token,
       state.query
@@ -794,10 +796,12 @@ function throwForNonComparable(state, expr, functionExtensions) {
   }
 
   if (expr.kind === "FunctionExtension") {
-    var func = functionExtensions[expr.name];
+    var func = (state.options.functionExtensions || FUNCTION_EXTENSIONS)[
+      expr.name
+    ];
 
     if (func === undefined) {
-      throw new JSONPathSyntaxError(
+      throw new JSONPathNameError(
         "unknown function extension " + expr.name,
         expr.token,
         state.query
@@ -805,8 +809,8 @@ function throwForNonComparable(state, expr, functionExtensions) {
     }
 
     if (func.returnType !== "ValueType") {
-      throw new JSONPathSyntaxError(
-        "result of " + expr.name + "() must be compared",
+      throw new JSONPathTypeError(
+        "result of " + expr.name + "() is not comparable",
         expr.token,
         state.query
       );
@@ -814,10 +818,12 @@ function throwForNonComparable(state, expr, functionExtensions) {
   }
 }
 
-function validateFunctionSignature(state, token, args, functionExtensions) {
+function validateFunctionSignature(state, token, args) {
+  var functionExtensions =
+    state.options.functionExtensions || FUNCTION_EXTENSIONS;
   var func = functionExtensions[token.value];
   if (func === undefined) {
-    throw new JSONPathSyntaxError(
+    throw new JSONPathNameError(
       "unknown function extension " + token.value,
       token,
       state.query
@@ -838,7 +844,7 @@ function validateFunctionSignature(state, token, args, functionExtensions) {
       " given)"
     ].join("");
 
-    throw new JSONPathSyntaxError(message, token, state.query);
+    throw new JSONPathTypeError(message, token, state.query);
   }
 
   for (var i = 0; i < expectedArgCount; i++) {
@@ -854,8 +860,8 @@ function validateFunctionSignature(state, token, args, functionExtensions) {
               functionExtensions[arg.name].returnType === "ValueType")
           )
         ) {
-          throw new JSONPathSyntaxError(
-            "" + token.value + "() argument " + i + "must be of ValueType",
+          throw new JSONPathTypeError(
+            "" + token.value + "() argument " + i + " must be of ValueType",
             token,
             state.query
           );
@@ -863,8 +869,8 @@ function validateFunctionSignature(state, token, args, functionExtensions) {
         break;
       case "LogicalType":
         if (!(isFilterQuery(arg) || isInfixExpression(arg))) {
-          throw new JSONPathSyntaxError(
-            "" + token.value + "() argument " + i + "must be of LogicalType",
+          throw new JSONPathTypeError(
+            "" + token.value + "() argument " + i + " must be of LogicalType",
             token,
             state.query
           );
@@ -872,12 +878,14 @@ function validateFunctionSignature(state, token, args, functionExtensions) {
         break;
       case "NodesType":
         if (
-          !isFilterQuery(arg) ||
-          (arg.kind === "FunctionExtension" &&
-            functionExtensions[arg.name].returnType === "NodesType")
+          !(
+            isFilterQuery(arg) ||
+            (arg.kind === "FunctionExtension" &&
+              functionExtensions[arg.name].returnType === "NodesType")
+          )
         ) {
-          throw new JSONPathSyntaxError(
-            "" + token.value + "() argument " + i + "must be of NodesType",
+          throw new JSONPathTypeError(
+            "" + token.value + "() argument " + i + " must be of NodesType",
             token,
             state.query
           );

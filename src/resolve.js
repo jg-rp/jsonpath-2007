@@ -1,9 +1,5 @@
 var NOTHING = {};
 
-// TODO: "cache" array length in loop init
-// TODO: "cache" node.value to avoid repeated resolve
-// TODO: use `hasOwnProperty` guard on all `for ... in`
-
 /**
  * Resolve a pre-compiled JSONPath expression against `data`.
  * @param {JSONPathQuery} query A compiled query.
@@ -13,8 +9,8 @@ var NOTHING = {};
  */
 function resolve(query, data, options) {
   var nodes = [{ value: data, location: [], root: data }];
-  for (var segment in query.segments) {
-    nodes = resolveSegment(query.segments[segment], nodes, options || {});
+  for (var i = 0, len = query.segments.length; i < len; i++) {
+    nodes = resolveSegment(query.segments[i], nodes, options || {});
   }
   return nodes;
 }
@@ -22,44 +18,39 @@ function resolve(query, data, options) {
 function resolveSegment(segment, nodes, options) {
   var result = [];
   var selectors = segment.selectors;
-  var selLen = selectors.length;
+  var selectorsLen = selectors.length;
   var nodesLen = nodes.length;
 
-  // TODO: change this back
-  var iNode, iSelector, iNewNode, iDescendant;
+  var i, j, k, m;
   var descLen, newLen;
   var newNodes, descendantNodes;
 
   switch (segment.kind) {
     case "ChildSegment":
-      for (iNode = 0; iNode < nodesLen; iNode++) {
-        for (iSelector = 0; iSelector < selLen; iSelector++) {
-          newNodes = resolveSelector(
-            selectors[iSelector],
-            nodes[iNode],
-            options
-          );
+      for (i = 0; i < nodesLen; i++) {
+        for (j = 0; j < selectorsLen; j++) {
+          newNodes = resolveSelector(selectors[j], nodes[i], options);
           newLen = newNodes.length;
-          for (iNewNode = 0; iNewNode < newLen; iNewNode++) {
-            result.push(newNodes[iNewNode]);
+          for (k = 0; k < newLen; k++) {
+            result.push(newNodes[k]);
           }
         }
       }
       break;
     case "DescendantSegment":
-      for (iNode = 0; iNode < nodesLen; iNode++) {
-        descendantNodes = visit(nodes[iNode], 1);
+      for (i = 0; i < nodesLen; i++) {
+        descendantNodes = visit(nodes[i], 1);
         descLen = descendantNodes.length;
-        for (iDescendant = 0; iDescendant < descLen; iDescendant++) {
-          for (iSelector = 0; iSelector < selLen; iSelector++) {
+        for (m = 0; m < descLen; m++) {
+          for (j = 0; j < selectorsLen; j++) {
             newNodes = resolveSelector(
-              selectors[iSelector],
-              descendantNodes[iDescendant],
+              selectors[j],
+              descendantNodes[m],
               options
             );
             newLen = newNodes.length;
-            for (iNewNode = 0; iNewNode < newLen; iNewNode++) {
-              result.push(newNodes[iNewNode]);
+            for (k = 0; k < newLen; k++) {
+              result.push(newNodes[k]);
             }
           }
         }
@@ -72,74 +63,74 @@ function resolveSegment(segment, nodes, options) {
 
 function resolveSelector(selector, node, options) {
   var result = [];
+  var value = node.value;
 
   switch (selector.kind) {
     case "NameSelector":
       if (
-        isPlainObject(node.value) &&
-        Object.prototype.hasOwnProperty.call(node.value, selector.name)
+        isPlainObject(value) &&
+        Object.prototype.hasOwnProperty.call(value, selector.name)
       ) {
-        result.push(newChild(node, node.value[selector.name], selector.name));
+        result.push(newChild(node, value[selector.name], selector.name));
       }
       break;
     case "IndexSelector":
-      if (isArray(node.value)) {
-        var normIndex = normalizedIndex(selector.index, node.value.length);
-        if (normIndex in node.value) {
-          result.push(newChild(node, node.value[normIndex], normIndex));
+      if (isArray(value)) {
+        var normIndex = normalizedIndex(selector.index, value.length);
+        if (normIndex in value) {
+          result.push(newChild(node, value[normIndex], normIndex));
         }
       }
       break;
     case "SliceSelector":
-      if (isArray(node.value)) {
-        var sliced = slice(node.value, selector);
+      if (isArray(value)) {
+        var sliced = slice(value, selector);
         for (var i = 0, slicedLen = sliced.length; i < slicedLen; i++) {
           result.push(newChild(node, sliced[i][1], sliced[i][0]));
         }
       }
       break;
     case "WildcardSelector":
-      if (isArray(node.value)) {
-        for (var i = 0, arrLen = node.value.length; i < arrLen; i++) {
-          result.push(newChild(node, node.value[i], i));
+      if (isArray(value)) {
+        for (var i = 0, arrLen = value.length; i < arrLen; i++) {
+          result.push(newChild(node, value[i], i));
         }
-      } else if (isPlainObject(node.value)) {
-        for (var key in node.value) {
-          if (Object.prototype.hasOwnProperty.call(node.value, key)) {
-            result.push(newChild(node, node.value[key], key));
+      } else if (isPlainObject(value)) {
+        for (var key in value) {
+          if (Object.prototype.hasOwnProperty.call(value, key)) {
+            result.push(newChild(node, value[key], key));
           }
         }
       }
       break;
     case "FilterSelector":
-      if (isArray(node.value)) {
-        for (var i = 0, arrLen = node.value.length; i < arrLen; i++) {
+      if (isArray(value)) {
+        for (var i = 0, arrLen = value.length; i < arrLen; i++) {
           if (
             isTruthy(
               evaluateExpression(selector.expression, {
-                value: node.value[i],
+                value: value[i],
                 root: node.root,
                 options: options
               })
             )
           ) {
-            result.push(newChild(node, node.value[i], i));
+            result.push(newChild(node, value[i], i));
           }
         }
-      } else if (isPlainObject(node.value)) {
-        for (var key in node.value) {
-          if (Object.prototype.hasOwnProperty.call(node.value, key)) {
-            var value = node.value[key];
+      } else if (isPlainObject(value)) {
+        for (var key in value) {
+          if (Object.prototype.hasOwnProperty.call(value, key)) {
             if (
               isTruthy(
                 evaluateExpression(selector.expression, {
-                  value: value,
+                  value: value[key],
                   root: node.root,
                   options: options
                 })
               )
             ) {
-              result.push(newChild(node, value, key));
+              result.push(newChild(node, value[key], key));
             }
           }
         }
@@ -261,7 +252,7 @@ function evaluateExpression(expr, context) {
         );
       });
 
-      return func.call.apply(null, args);
+      return func.call.apply(context, args);
     default:
       break;
   }
@@ -269,19 +260,20 @@ function evaluateExpression(expr, context) {
 
 function visit(node, depth) {
   var result = [node];
+  var value = node.value;
   var newChildren;
 
-  if (isArray(node.value)) {
-    for (var i = 0; i < node.value.length; i++) {
-      newChildren = visit(newChild(node, node.value[i], i), depth + 1);
+  if (isArray(value)) {
+    for (var i = 0; i < value.length; i++) {
+      newChildren = visit(newChild(node, value[i], i), depth + 1);
       for (var j = 0; j < newChildren.length; j++) {
         result.push(newChildren[j]);
       }
     }
-  } else if (isPlainObject(node.value)) {
-    for (var key in node.value) {
-      if (Object.prototype.hasOwnProperty.call(node.value, key)) {
-        newChildren = visit(newChild(node, node.value[key], key), depth + 1);
+  } else if (isPlainObject(value)) {
+    for (var key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        newChildren = visit(newChild(node, value[key], key), depth + 1);
         for (var i = 0; i < newChildren.length; i++) {
           result.push(newChildren[i]);
         }

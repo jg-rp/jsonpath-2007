@@ -26,9 +26,7 @@ describe("JSONPath Compliance Test Suite", () => {
       invalidSelector
     ) => {
       if (invalidSelector) {
-        expect(() => JSONPath.compile(query)).toThrow(
-          JSONPath.JSONPathSyntaxError
-        );
+        expect(() => JSONPath.compile(query)).toThrow(JSONPath.JSONPathError);
       } else {
         const nodes = JSONPath.find(query, data);
         const paths = nodes.map((n) => JSONPath.canonicalPath(n));
