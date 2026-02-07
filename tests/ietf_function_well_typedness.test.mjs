@@ -37,7 +37,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import JSONPath from "../dist/jsonpath.js";
+import JSONPath from "../dist/jsonpath.cjs.js";
 
 const TEST_CASES = [
   {

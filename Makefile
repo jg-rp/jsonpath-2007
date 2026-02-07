@@ -1,5 +1,6 @@
 BANNER = src/banner.js
 FOOTER = src/footer.js
+EXPORT = src/export.js
 
 INTERNAL = \
   src/errors.js \
@@ -12,27 +13,42 @@ INTERNAL = \
   src/functions.js \
   src/api.js
 
-DIST = dist/jsonpath.js
+DIST = dist
+GLOBAL = $(DIST)/jsonpath.global.js
+CJS = $(DIST)/jsonpath.cjs.js
 
-all: $(DIST)
+all: $(GLOBAL) $(CJS)
 
-build: $(DIST)
+$(DIST):
+	mkdir -p $(DIST)
 
-$(DIST): $(BANNER) $(INTERNAL) $(FOOTER)
-	@mkdir -p dist
-	@echo "Building $(DIST)"
-
-	@cat $(BANNER) > $(DIST)
+$(GLOBAL): ${DIST} $(BANNER) $(INTERNAL) $(FOOTER)
+	@echo "Building $(GLOBAL)"
+	@cat $(BANNER) > $(GLOBAL)
 
 	@for f in $(INTERNAL); do \
-	  sed '/^$$/!s/^/  /' $$f >> $(DIST); \
-	  echo >> $(DIST); \
+	  sed '/^$$/!s/^/  /' $$f >> $(GLOBAL); \
+	  echo >> $(GLOBAL); \
 	done
 
-	@cat $(FOOTER) >> $(DIST)
+	@cat $(FOOTER) >> $(GLOBAL)
+
+$(CJS): ${DIST} $(BANNER) $(INTERNAL) $(FOOTER)
+	@echo "Building $(CJS)"
+	@cat $(BANNER) > $(CJS)
+
+	@for f in $(INTERNAL); do \
+	  sed '/^$$/!s/^/  /' $$f >> $(CJS); \
+	  echo >> $(CJS); \
+	done
+
+	@cat $(FOOTER) >> $(CJS)
+	@cat $(EXPORT) >> $(CJS)
 
 clean:
-	rm -f $(DIST)
+	rm -f $(GLOBAL) ${CJS}
+
+build: $(GLOBAL) $(CJS)
 
 rebuild: clean build
 
@@ -41,4 +57,5 @@ test: rebuild
 
 dev: rebuild
 	bun run dev.mjs
-	
+
+.PHONY: all build rebuild clean test dev

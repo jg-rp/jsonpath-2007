@@ -1,5 +1,6 @@
 import { Bench, nToMs } from "tinybench";
-import JSONPath from "../dist/jsonpath.js";
+import JSONPath from "../dist/jsonpath.cjs.js";
+// import json_p3 from "../dist/json-p3.es3.js";
 import cts from "../tests/cts/cts.json" with { type: "json" };
 
 function validQueries() {
@@ -16,32 +17,23 @@ const COMPILED_QUERIES = TEST_CASES.map((t) => {
   return { query: JSONPath.compile(t.query), data: t.data };
 });
 
-// XXX: This is specific to Bun.
-// https://github.com/tinylibs/tinybench/blob/main/examples/src/simple-bun.ts
-
-// const bench = new Bench({
-//   name: "JSONPath Valid CTS Queries",
-//   now: () => nToMs(Bun.nanoseconds()),
-//   setup: (_task, mode) => {
-//     // Run the garbage collector before warmup at each cycle
-//     if (mode === "warmup") {
-//       Bun.gc(true);
-//     }
-//   },
-//   time: 1000,
+// const P3_COMPILED_QUERIES = TEST_CASES.map((t) => {
+//   return { query: json_p3.compile(t.query), data: t.data };
 // });
 
-// XXX: This is specific to NodeJS.
+// NOTE: This is specific to Bun.
+// https://github.com/tinylibs/tinybench/blob/main/examples/src/simple-bun.ts
 
 const bench = new Bench({
   name: "JSONPath Valid CTS Queries",
+  now: () => nToMs(Bun.nanoseconds()),
   setup: (_task, mode) => {
     // Run the garbage collector before warmup at each cycle
-    if (mode === "warmup" && typeof globalThis.gc === "function") {
-      globalThis.gc();
+    if (mode === "warmup") {
+      Bun.gc(true);
     }
   },
-  time: 10000,
+  time: 1000
 });
 
 bench.add("just compile", () => {
@@ -61,6 +53,24 @@ bench.add("compile and find", () => {
     JSONPath.find(t.query, t.data);
   }
 });
+
+// bench.add("P3 just compile", () => {
+//   for (const t of TEST_CASES) {
+//     json_p3.compile(t.query);
+//   }
+// });
+
+// bench.add("P3 just find", () => {
+//   for (const t of P3_COMPILED_QUERIES) {
+//     t.query.query(t.data);
+//   }
+// });
+
+// bench.add("P3 compile and find", () => {
+//   for (const t of TEST_CASES) {
+//     json_p3.query(t.query, t.data);
+//   }
+// });
 
 await bench.run();
 

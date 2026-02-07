@@ -11,6 +11,7 @@
     "moduleResolution": "Classic"
   },
   "files": [
-    "dist/jsonpath.js"
+    "dist/jsonpath.cjs.js",
+    "dist/jsonpath.global.js",
   ]
 }

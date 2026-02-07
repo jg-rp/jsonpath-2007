@@ -1,5 +1,6 @@
 /*!
  * JSONPath RFC 9535
+ * https://github.com/jg-rp/js-jsonpath
  * 
  * The MIT License (MIT)
  * 
