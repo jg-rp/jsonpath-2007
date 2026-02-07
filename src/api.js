@@ -102,5 +102,6 @@ var api = {
   JSONPathSyntaxError: JSONPathSyntaxError,
   JSONPathTypeError: JSONPathTypeError,
   JSONPathNameError: JSONPathNameError,
-  standardFunctionExtensions: standardFunctionExtensions
+  standardFunctionExtensions: standardFunctionExtensions,
+  NOTHING: NOTHING
 };

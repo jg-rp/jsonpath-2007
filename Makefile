@@ -14,8 +14,8 @@ INTERNAL = \
   src/api.js
 
 DIST = dist
-GLOBAL = $(DIST)/jsonpath.global.js
-CJS = $(DIST)/jsonpath.cjs.js
+GLOBAL = $(DIST)/jsonpath-2007.global.js
+CJS = $(DIST)/jsonpath-2007.cjs.js
 
 all: $(GLOBAL) $(CJS)
 

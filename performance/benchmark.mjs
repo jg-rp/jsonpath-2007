@@ -1,5 +1,5 @@
 import { Bench, nToMs } from "tinybench";
-import JSONPath from "../dist/jsonpath.cjs.js";
+import JSONPath from "../dist/jsonpath-2007.cjs.js";
 // import json_p3 from "../dist/json-p3.es3.js";
 import cts from "../tests/cts/cts.json" with { type: "json" };
 

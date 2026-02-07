@@ -10,8 +10,5 @@
     "strict": false,
     "moduleResolution": "Classic"
   },
-  "files": [
-    "dist/jsonpath.cjs.js",
-    "dist/jsonpath.global.js",
-  ]
+  "files": ["dist/jsonpath-2007.cjs.js", "dist/jsonpath-2007.global.js"]
 }

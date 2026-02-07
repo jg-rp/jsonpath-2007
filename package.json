@@ -1,8 +1,29 @@
 {
-  "name": "js-jsonpath",
+  "name": "jsonpath-2007",
+  "version": "0.0.1",
+  "author": "James Prior",
+  "license": "MIT",
+  "description": "RFC 9535 JSONPath implemented like it's 2007",
+  "homepage": "https://github.com/jg-rp/jsonpath-2007",
+  "bugs": {
+    "url": "https://github.com/jg-rp/jsonpath-2007/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jg-rp/jsonpath-2007.git"
+  },
+  "main": "dist/jsonpath-2007.cjs.js",
+  "browser": "dist/jsonpath-2007.global.js",
+  "files": [
+    "dist/**/*"
+  ],
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",
     "tinybench": "^6.0.0"
-  }
+  },
+  "keywords": [
+    "JSON",
+    "JSONPath"
+  ]
 }

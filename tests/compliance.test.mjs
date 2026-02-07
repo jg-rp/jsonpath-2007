@@ -1,4 +1,4 @@
-import JSONPath from "../dist/jsonpath.cjs.js";
+import JSONPath from "../dist/jsonpath-2007.cjs.js";
 import cts from "./cts/cts.json" with { type: "json" };
 
 const TEST_CASES = cts.tests.map((t) => [
