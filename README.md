@@ -2,9 +2,9 @@
 
 RFC 9535 JSONPath implemented like it's 2007.
 
-In honour of [Stefan Gössner's original JSONPath implementation from 2007](https://code.google.com/archive/p/jsonpath/), jsonpath-2007 implements [RFC 9535](https://www.rfc-editor.org/rfc/rfc9535) with hand-crafted [ES3](https://en.wikipedia.org/wiki/ECMAScript_version_history). No TypeScript, no modern conveniences and no build system. Just plain objects, a bunch of functions and a Makefile.
+In honour of [Stefan Gössner's original JSONPath implementation from 2007](https://code.google.com/archive/p/jsonpath/), jsonpath-2007 implements [RFC 9535](https://www.rfc-editor.org/rfc/rfc9535) with hand-crafted [ES3](https://en.wikipedia.org/wiki/ECMAScript_version_history). No TypeScript, no modern syntax and no build system. Just plain objects, a bunch of functions and a Makefile.
 
-One side effect of these self-imposed restrictions is that jsonpath-2007 seems to [outperform](#benchmarks) a TypeScript (transpiled with Babel) implementation taking an OOP approach.
+One side effect of these self-imposed restrictions is that jsonpath-2007 seems to [outperform](#benchmarks) a TypeScript (transpiled with Babel and bundled wth Rollup) implementation taking an OOP approach.
 
 > [!NOTE]  
 > The included `match` and `search` function extensions are non-checking. We map I-Regexp to ECMAScript Regexps according to [section 5](https://www.rfc-editor.org/rfc/rfc9485.html#name-mapping-i-regexp-to-regexp-) of [RFC 9485](https://www.rfc-editor.org/rfc/rfc9485.html) without checking for compliance.
