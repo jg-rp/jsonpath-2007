@@ -1,6 +1,7 @@
 import { Bench, nToMs } from "tinybench";
 import JSONPath from "../dist/jsonpath-2007.cjs.js";
 // import json_p3 from "../dist/json-p3.es3.js";
+import json_p3 from "../dist/json-p3.cjs.js";
 import cts from "../tests/cts/cts.json" with { type: "json" };
 
 function validQueries() {
@@ -17,9 +18,9 @@ const COMPILED_QUERIES = TEST_CASES.map((t) => {
   return { query: JSONPath.compile(t.query), data: t.data };
 });
 
-// const P3_COMPILED_QUERIES = TEST_CASES.map((t) => {
-//   return { query: json_p3.compile(t.query), data: t.data };
-// });
+const P3_COMPILED_QUERIES = TEST_CASES.map((t) => {
+  return { query: json_p3.compile(t.query), data: t.data };
+});
 
 // NOTE: This is specific to Bun.
 // https://github.com/tinylibs/tinybench/blob/main/examples/src/simple-bun.ts
@@ -33,8 +34,21 @@ const bench = new Bench({
       Bun.gc(true);
     }
   },
-  time: 1000
+  time: 10000
 });
+
+// NOTE: This is specific to NodeJS.
+
+// const bench = new Bench({
+//   name: "JSONPath Valid CTS Queries",
+//   setup: (_task, mode) => {
+//     // Run the garbage collector before warmup at each cycle
+//     if (mode === "warmup" && typeof globalThis.gc === "function") {
+//       globalThis.gc();
+//     }
+//   },
+//   time: 10000
+// });
 
 bench.add("just compile", () => {
   for (const t of TEST_CASES) {
@@ -54,23 +68,23 @@ bench.add("compile and find", () => {
   }
 });
 
-// bench.add("P3 just compile", () => {
-//   for (const t of TEST_CASES) {
-//     json_p3.compile(t.query);
-//   }
-// });
+bench.add("P3 just compile", () => {
+  for (const t of TEST_CASES) {
+    json_p3.compile(t.query);
+  }
+});
 
-// bench.add("P3 just find", () => {
-//   for (const t of P3_COMPILED_QUERIES) {
-//     t.query.query(t.data);
-//   }
-// });
+bench.add("P3 just find", () => {
+  for (const t of P3_COMPILED_QUERIES) {
+    t.query.query(t.data);
+  }
+});
 
-// bench.add("P3 compile and find", () => {
-//   for (const t of TEST_CASES) {
-//     json_p3.query(t.query, t.data);
-//   }
-// });
+bench.add("P3 compile and find", () => {
+  for (const t of TEST_CASES) {
+    json_p3.query(t.query, t.data);
+  }
+});
 
 await bench.run();
 
