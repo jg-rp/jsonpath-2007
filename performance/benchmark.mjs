@@ -1,6 +1,6 @@
 import { Bench, nToMs } from "tinybench";
 import JSONPath from "../dist/jsonpath-2007.cjs.js";
-// import json_p3 from "../dist/json-p3.es3.js";
+import json_p3_es3 from "../dist/json-p3.es3.js";
 import json_p3 from "../dist/json-p3.cjs.js";
 import cts from "../tests/cts/cts.json" with { type: "json" };
 
@@ -22,71 +22,113 @@ const P3_COMPILED_QUERIES = TEST_CASES.map((t) => {
   return { query: json_p3.compile(t.query), data: t.data };
 });
 
-// NOTE: This is specific to Bun.
-// https://github.com/tinylibs/tinybench/blob/main/examples/src/simple-bun.ts
+const P3_ES3_COMPILED_QUERIES = TEST_CASES.map((t) => {
+  return { query: json_p3_es3.compile(t.query), data: t.data };
+});
 
-const bench = new Bench({
-  name: "JSONPath Valid CTS Queries",
-  now: () => nToMs(Bun.nanoseconds()),
-  setup: (_task, mode) => {
+const benchOptions = {
+  name: `JSONPath - ${COMPILED_QUERIES.length} Valid CTS Queries per op`,
+  time: 10000
+};
+
+if (process.versions.bun) {
+  benchOptions.now = () => nToMs(Bun.nanoseconds());
+  benchOptions.setup = (_task, mode) => {
     // Run the garbage collector before warmup at each cycle
     if (mode === "warmup") {
       Bun.gc(true);
     }
-  },
-  time: 10000
-});
+  };
+} else {
+  benchOptions.setup = (_task, mode) => {
+    // Run the garbage collector before warmup at each cycle
+    if (mode === "warmup" && typeof globalThis.gc === "function") {
+      globalThis.gc();
+    }
+  };
+}
 
-// NOTE: This is specific to NodeJS.
+const bench = new Bench(benchOptions);
 
-// const bench = new Bench({
-//   name: "JSONPath Valid CTS Queries",
-//   setup: (_task, mode) => {
-//     // Run the garbage collector before warmup at each cycle
-//     if (mode === "warmup" && typeof globalThis.gc === "function") {
-//       globalThis.gc();
-//     }
-//   },
-//   time: 10000
-// });
-
-bench.add("just compile", () => {
+bench.add("jsonpath-2007 just compile", () => {
   for (const t of TEST_CASES) {
     JSONPath.compile(t.query);
   }
 });
 
-bench.add("just find", () => {
+bench.add("jsonpath-2007 just find", () => {
   for (const t of COMPILED_QUERIES) {
     JSONPath.resolve(t.query, t.data);
   }
 });
 
-bench.add("compile and find", () => {
+bench.add("jsonpath-2007 compile and find", () => {
   for (const t of TEST_CASES) {
     JSONPath.find(t.query, t.data);
   }
 });
 
-bench.add("P3 just compile", () => {
+bench.add("P3 (current) just compile", () => {
   for (const t of TEST_CASES) {
     json_p3.compile(t.query);
   }
 });
 
-bench.add("P3 just find", () => {
+bench.add("P3 (current) just find", () => {
   for (const t of P3_COMPILED_QUERIES) {
     t.query.query(t.data);
   }
 });
 
-bench.add("P3 compile and find", () => {
+bench.add("P3 (current) compile and find", () => {
   for (const t of TEST_CASES) {
     json_p3.query(t.query, t.data);
   }
 });
 
+bench.add("P3 (ES3 build) just compile", () => {
+  for (const t of TEST_CASES) {
+    json_p3_es3.compile(t.query);
+  }
+});
+
+bench.add("P3 (ES3 build) just find", () => {
+  for (const t of P3_ES3_COMPILED_QUERIES) {
+    t.query.query(t.data);
+  }
+});
+
+bench.add("P3 (ES3 build) compile and find", () => {
+  for (const t of TEST_CASES) {
+    json_p3_es3.query(t.query, t.data);
+  }
+});
+
 await bench.run();
 
+function tableConverter(task) {
+  const state = task.result.state;
+  return {
+    "Task name": task.name,
+    ...(state === "aborted-with-statistics" || state === "completed"
+      ? {
+          "Throughput avg (ops/s)": `${Math.round(task.result.throughput.mean).toString()} \xb1 ${task.result.throughput.rme.toFixed(2)}%`,
+          Samples: task.result.latency.samplesCount
+        }
+      : state !== "errored"
+        ? {
+            "Throughput avg (ops/s)": "N/A",
+            Remarks: state
+          }
+        : {
+            Error: task.result.error.message,
+            Stack: task.result.error.stack ?? "N/A"
+          }),
+    ...(state === "aborted-with-statistics" && {
+      Remarks: state
+    })
+  };
+}
+
 console.log(bench.name);
-console.table(bench.table());
+console.table(bench.table(tableConverter));
