@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jg-rp/jsonpath-2007.git"
+    "url": "git+https://github.com/jg-rp/jsonpath-2007.git"
   },
   "main": "dist/jsonpath-2007.cjs.js",
   "browser": "dist/jsonpath-2007.global.js",

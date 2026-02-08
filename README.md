@@ -64,7 +64,7 @@ console.log(paths);
 ## Links
 
 - GitHub: https://github.com/jg-rp/jsonpath-2007
-- NPM: TODO:
+- NPM: https://www.npmjs.com/package/jsonpath-2007
 - Change log: https://github.com/jg-rp/jsonpath-2007/blob/main/CHANGELOG.md
 - Issue tracker: https://github.com/jg-rp/jsonpath-2007/issues
 
