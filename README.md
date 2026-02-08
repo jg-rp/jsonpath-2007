@@ -2,9 +2,12 @@
 
 **RFC 9535 JSONPath implemented like it's 2007.**
 
+![NPM License](https://img.shields.io/npm/l/jsonpath-2007?style=flat-square)
+![NPM Version](https://img.shields.io/npm/v/jsonpath-2007?style=flat-square)
+
 In honour of [Stefan Gössner's original JSONPath implementation from 2007](https://code.google.com/archive/p/jsonpath/), jsonpath-2007 implements the [RFC 9535 JSONPath specification](https://www.rfc-editor.org/rfc/rfc9535) using hand-crafted [ECMAScript 3](https://en.wikipedia.org/wiki/ECMAScript_version_history) only. There's no TypeScript, no modern syntax, and no build system. Just plain objects, a bunch of functions, and a Makefile.
 
-These self-imposed constraints are partly historical and partly experimental (and I was looking for an excuse to avoid doing the work I was meant to be doing). Take a look at the [benchmarks](#benchmark) to see how idiomatic ES3 performs compared to transpiled TypeScript.
+These self-imposed constraints are partly historical and partly experimental. Take a look at the [benchmarks](#benchmark) to see how idiomatic ES3 performs compared to transpiled TypeScript.
 
 > [!NOTE]  
 > The included `match` and `search` function extensions are _non-checking_. I-Regexp expressions are mapped directly to ECMAScript RegExp according to [Section 5 of RFC 9485](https://www.rfc-editor.org/rfc/rfc9485.html#name-mapping-i-regexp-to-regexp-) without validating full compliance.
