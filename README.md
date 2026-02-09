@@ -7,10 +7,10 @@
 
 In honour of [Stefan Gössner's original JSONPath implementation from 2007](https://code.google.com/archive/p/jsonpath/), jsonpath-2007 implements the [RFC 9535 JSONPath specification](https://www.rfc-editor.org/rfc/rfc9535) using hand-crafted [ECMAScript 3](https://en.wikipedia.org/wiki/ECMAScript_version_history) only. There's no TypeScript, no modern syntax, and no build system. Just plain objects, a bunch of functions, and a Makefile.
 
-These self-imposed constraints are partly historical and partly experimental. Take a look at the [benchmarks](#benchmark) to see how idiomatic ES3 performs compared to transpiled TypeScript.
+These self-imposed constraints are partly historical and partly experimental. Take a look at the [benchmarks](#benchmark) to see how idiomatic ES3 performs compared to transpiled TypeScript using object orientated techniques.
 
 > [!NOTE]  
-> The included `match` and `search` function extensions are _non-checking_. I-Regexp expressions are mapped directly to ECMAScript RegExp according to [Section 5 of RFC 9485](https://www.rfc-editor.org/rfc/rfc9485.html#name-mapping-i-regexp-to-regexp-) without validating full compliance.
+> The included `match` and `search` function extensions are _non-checking_. I-Regexp expressions are mapped to ECMAScript RegExp according to [Section 5 of RFC 9485](https://www.rfc-editor.org/rfc/rfc9485.html#name-mapping-i-regexp-to-regexp-) without validating full compliance.
 
 ## Example
 
@@ -173,7 +173,7 @@ const nodes = jsonpath.find("$.some.query", someData, options);
 
 ## Benchmark
 
-Benchmarks were run against all valid queries from the [JSONPath Compliance Test Suite](https://github.com/jsonpath-standard/jsonpath-compliance-test-suite) (many small queries run against small data) under both **Node.js v24.13.0 (V8)** and **Bun 1.3.8 (JavaScriptCore)**. Results compare three implementations: **jsonpath-2007** (hand-written ES3), **P3 (current)** (modern TypeScript build), and **P3 (ES3 build)** (TypeScript transpiled down to ES3).
+Benchmarks were run against all valid queries from the [JSONPath Compliance Test Suite](https://github.com/jsonpath-standard/jsonpath-compliance-test-suite) (many small queries run against small data) under both Node.js v24.13.0 and Bun 1.3.8. Results compare three implementations: **jsonpath-2007** (hand-written ES3), **P3 (current)** (modern TypeScript build), and **P3 (ES3 build)** (TypeScript transpiled down to ES3).
 
 **Node.js v24.13.0 on an M2 Mac Mini**
 
@@ -213,6 +213,6 @@ JSONPath - 456 Valid CTS Queries per op
 └───┴─────────────────────────────────┴────────────────────────┴─────────┘
 ```
 
-Across both runtimes, **jsonpath-2007 is consistently the fastest implementation**. Under Node.js, it achieves roughly **2.2x higher throughput for compilation**, **3.2x for evaluation**, and **2.8x for combined compile+find** compared to the current TypeScript build. The ES3-transpiled P3 build performs substantially worse, typically **6-7x slower** than jsonpath-2007 for compile-heavy workloads and **~4x slower** for combined operations.
+Across both runtimes, jsonpath-2007 is consistently the fastest implementation. Under Node.js, it achieves roughly 2.2x higher throughput for compilation, 3.2x for evaluation, and 2.8x for combined compile+find compared to the current TypeScript build. The ES3-transpiled P3 build performs substantially worse, typically 6-7x slower than jsonpath-2007 for compile-heavy workloads and ~4x slower for combined operations.
 
-Under Bun, the gap narrows for evaluation-heavy workloads but remains significant overall. jsonpath-2007 is still about **2.2x faster for compilation**, **~1.3x faster for evaluation**, and **~1.7x faster for combined compile+find** compared to the current P3 build. As with Node.js, the ES3-transpiled P3 build consistently underperforms both alternatives, indicating that simply targeting ES3 at the compiler level does not recover the performance characteristics of an idiomatic ES3 codebase.
+Under Bun, the gap narrows for evaluation-heavy workloads but remains significant overall. jsonpath-2007 is still about 2.2x faster for compilation, ~1.3x faster for evaluation, and ~1.7x faster for combined compile+find compared to the current P3 build. As with Node.js, the ES3-transpiled P3 build consistently underperforms both alternatives, indicating that simply targeting ES3 at the compiler level does not recover the performance characteristics of an idiomatic ES3 codebase.
